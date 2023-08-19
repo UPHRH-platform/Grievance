@@ -5,7 +5,8 @@ import com.google.cloud.storage.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.upsmf.grievance.dto.FileUploadRequest;
+import org.springframework.web.multipart.MultipartFile;
+import org.upsmf.grievance.dto.FileUploadDto;
 import org.upsmf.grievance.service.AttachmentService;
 
 import java.io.IOException;
@@ -44,15 +45,15 @@ public class AttachmentServiceImpl implements AttachmentService {
     private String gcpPrivateKeyId;
 
     @Override
-    public void uploadObject(FileUploadRequest fileUploadRequest) {
+    public void uploadObject(MultipartFile file, FileUploadDto fileUploadDto) {
         try {
-            Path filePath = Files.createTempFile(fileUploadRequest.getFileName().split(".")[0], fileUploadRequest.getFileName().split(".")[1]);
+            Path filePath = Files.createTempFile(fileUploadDto.getFileName().split(".")[0], fileUploadDto.getFileName().split(".")[1]);
             ServiceAccountCredentials credentials = ServiceAccountCredentials.fromPkcs8(gcpClientId, gcpClientEmail,
                     gcpPkcsKey, gcpPrivateKeyId, new java.util.ArrayList<String>());
             System.out.println("credentials created");
             Storage storage = StorageOptions.newBuilder().setProjectId(gcpProjectId).setCredentials(credentials).build().getService();
             System.out.println("storage object created");
-            BlobId blobId = BlobId.of(gcpBucketName, fileUploadRequest.getFileName());
+            BlobId blobId = BlobId.of(gcpBucketName, fileUploadDto.getFileName());
             BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
             Blob blob = storage.createFrom(blobInfo, filePath);
             // TODO return correct response after testing

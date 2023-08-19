@@ -12,6 +12,7 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString
+@Builder
 public class SearchRequest {
 
     private String searchKeyword;

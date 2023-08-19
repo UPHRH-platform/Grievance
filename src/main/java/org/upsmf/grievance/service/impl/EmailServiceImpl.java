@@ -1,11 +1,11 @@
 package org.upsmf.grievance.service.impl;
 
 // Importing required classes
-import java.io.File;
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.velocity.Template;
+import org.apache.velocity.VelocityContext;
+import org.apache.velocity.app.VelocityEngine;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -16,6 +16,13 @@ import org.springframework.stereotype.Service;
 import org.upsmf.grievance.model.EmailDetails;
 import org.upsmf.grievance.service.EmailService;
 
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
+import java.io.File;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.List;
+
 // Annotation
 @Service
 @Slf4j
@@ -25,7 +32,29 @@ public class EmailServiceImpl implements EmailService {
 
     @Autowired private JavaMailSender javaMailSender;
 
-    @Value("${spring.mail.username}") private String sender;
+    @Value("${spring.mail.username}")
+    private String sender;
+
+    public void sendMailByVelocityTemplate(String templatePath, String recipientEmail) {
+        // send mail using velocity template
+        try {
+            VelocityEngine velocityEngine = new VelocityEngine();
+            velocityEngine.init();
+
+            Template t = velocityEngine.getTemplate("vtemplates/class.vm");
+
+            VelocityContext context = new VelocityContext();
+
+
+
+            StringWriter writer = new StringWriter();
+            t.merge( context, writer );
+
+            System.out.println(writer.toString());
+        } catch (Exception e) {
+
+        }
+    }
 
     // Method 1
     // To send a simple email
