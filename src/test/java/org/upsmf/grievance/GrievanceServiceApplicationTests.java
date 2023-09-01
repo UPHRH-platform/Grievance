@@ -8,6 +8,7 @@ class GrievanceServiceApplicationTests {
 
 	@Test
 	void contextLoads() {
+
 	}
 
 }

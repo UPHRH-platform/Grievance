@@ -10,12 +10,10 @@ import org.upsmf.grievance.dto.TicketRequest;
 import org.upsmf.grievance.dto.UpdateTicketRequest;
 import org.upsmf.grievance.enums.TicketPriority;
 import org.upsmf.grievance.enums.TicketStatus;
-import org.upsmf.grievance.model.AssigneeTicketAttachment;
-import org.upsmf.grievance.model.Comments;
-import org.upsmf.grievance.model.RaiserTicketAttachment;
-import org.upsmf.grievance.model.Ticket;
+import org.upsmf.grievance.model.*;
 import org.upsmf.grievance.repository.AssigneeTicketAttachmentRepository;
 import org.upsmf.grievance.repository.CommentRepository;
+import org.upsmf.grievance.repository.DepartmentRepository;
 import org.upsmf.grievance.repository.RaiserTicketAttachmentRepository;
 import org.upsmf.grievance.repository.es.TicketRepository;
 import org.upsmf.grievance.service.OtpService;
@@ -27,6 +25,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -59,6 +58,9 @@ public class TicketServiceImpl implements TicketService {
 
     @Value("${feedback.base.url}")
     private String feedbackBaseUrl;
+
+    @Autowired
+    private DepartmentRepository departmentRepository;
 
     /**
      *
@@ -125,6 +127,16 @@ public class TicketServiceImpl implements TicketService {
         return ticket;
     }
 
+    private List<Department> getUsersForDepartment(String cc) {
+        if(cc != null && !cc.isBlank()) {
+            List<org.upsmf.grievance.enums.Department> departmentList = org.upsmf.grievance.enums.Department.getById(Integer.valueOf(cc));
+            if(departmentList != null && !departmentList.isEmpty()) {
+                return departmentRepository.findAllByDepartmentName(departmentList.get(0).getCode());
+            }
+        }
+        return Collections.emptyList();
+    }
+
     /**
      *
      * @param ticketRequest
@@ -132,6 +144,12 @@ public class TicketServiceImpl implements TicketService {
      * @throws Exception
      */
     private Ticket createTicketWithDefault(TicketRequest ticketRequest) throws Exception {
+        long defaultCC = -1;
+        // get users for provided department
+        List<Department> departmentList = getUsersForDepartment(ticketRequest.getCc());
+        if(departmentList != null && !departmentList.isEmpty()) {
+            defaultCC = departmentList.get(0).getUserId();
+        }
         Timestamp currentTimestamp = new Timestamp(DateUtil.getCurrentDate().getTime());
         LocalDateTime escalationDateTime = LocalDateTime.now().plus(Long.valueOf(ticketEscalationDays), ChronoUnit.DAYS);
         return Ticket.builder()
@@ -141,7 +159,7 @@ public class TicketServiceImpl implements TicketService {
                 .phone(ticketRequest.getPhone())
                 .email(ticketRequest.getEmail())
                 .requesterType(ticketRequest.getUserType())
-                .assignedToId(ticketRequest.getCc())
+                .assignedToId(String.valueOf(defaultCC))
                 .description(ticketRequest.getDescription())
                 .createdDate(currentTimestamp)
                 .updatedDate(currentTimestamp)
@@ -236,13 +254,19 @@ public class TicketServiceImpl implements TicketService {
      * @param ticket
      */
     private void setUpdateTicket(UpdateTicketRequest updateTicketRequest, Ticket ticket) throws Exception {
+        long defaultCC = -1;
         // TODO check request role and permission
         if(updateTicketRequest.getStatus()!=null) {
             ticket.setStatus(updateTicketRequest.getStatus());
         }
 
         if(updateTicketRequest.getCc()!=null && !updateTicketRequest.getCc().isBlank()) {
-            ticket.setAssignedToId(updateTicketRequest.getCc());
+            // get users for provided department
+            List<Department> departmentList = getUsersForDepartment(updateTicketRequest.getCc());
+            if(departmentList != null && !departmentList.isEmpty()) {
+                defaultCC = departmentList.get(0).getUserId();
+            }
+            ticket.setAssignedToId(String.valueOf(defaultCC));
         }
         if(updateTicketRequest.getPriority()!=null) {
             ticket.setPriority(updateTicketRequest.getPriority());
