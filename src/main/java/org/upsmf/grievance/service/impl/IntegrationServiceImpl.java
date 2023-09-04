@@ -179,7 +179,7 @@ public class IntegrationServiceImpl implements IntegrationService {
                     User newUser = createUserWithApiResponse(userContentData);
                     User savedUser = userRepository.save(newUser);
                     // create user role mapping
-                    createUserRoleMapping(user, savedUser);
+                    //createUserRoleMapping(user, savedUser);
                     // create user department mapping
                     if(savedUser != null && savedUser.getId() > 0 && departmentList != null && !departmentList.isEmpty()) {
                         org.upsmf.grievance.model.Department departmentMap = org.upsmf.grievance.model.Department.builder().departmentName(departmentList.get(0).getCode()).userId(savedUser.getId()).build();
