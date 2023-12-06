@@ -14,7 +14,11 @@ public enum ErrorCode {
     TKT_001("Failed ticket creation"),
     TKT_002("Failed ticket creation - internal server error"),
     OTP_000("Internal OTP error"),
-    MAIL_001("Failed to save configuration.");
+    MAIL_001("Failed to save configuration."),
+    MAIL_002("Failed to update configuration."),
+    MAIL_003("Failed to fetch configurations."),
+    MAIL_004("Failed to activate configuration."),
+    MAIL_005("Failed to deactivate configuration.");
 
     private String description;
 

@@ -1,12 +1,12 @@
 package org.upsmf.grievance.service;
 
 import org.upsmf.grievance.dto.MailConfigDto;
-
-import java.util.List;
+import org.upsmf.grievance.dto.SearchMailConfigDto;
+import org.upsmf.grievance.dto.SearchMailConfigResponseDto;
 
 public interface SchedulerConfigService {
 
-    List<MailConfigDto> getAllMailConfig();
+    SearchMailConfigResponseDto searchMailConfig(SearchMailConfigDto searchMailConfigDto);
 
     MailConfigDto save(MailConfigDto mailConfigDto);
 
