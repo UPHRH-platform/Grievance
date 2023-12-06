@@ -4,9 +4,11 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.ToString;
+import org.apache.commons.lang.ArrayUtils;
 import org.upsmf.grievance.model.MailConfig;
 
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.List;
 
 @Data
@@ -28,7 +30,11 @@ public class MailConfigDto {
     public MailConfigDto(MailConfig mailConfig) {
         this.id = mailConfig.getId();
         this.authorityTitle = mailConfig.getAuthorityTitle();
-        this.authorityEmails = mailConfig.getAuthorityEmails();
+        if(mailConfig.getAuthorityEmails() != null && !mailConfig.getAuthorityEmails().isBlank()) {
+            this.authorityEmails = Arrays.asList(mailConfig.getAuthorityEmails());
+        } else {
+            this.authorityEmails = Arrays.asList(ArrayUtils.EMPTY_STRING_ARRAY);
+        }
         this.configValue = mailConfig.getConfigValue();
         this.active = mailConfig.isActive();
         this.createdBy = mailConfig.getCreatedBy();

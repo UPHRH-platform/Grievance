@@ -3,6 +3,7 @@ package org.upsmf.grievance.model;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import org.apache.commons.lang.StringUtils;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.upsmf.grievance.dto.MailConfigDto;
@@ -26,7 +27,7 @@ public class MailConfig {
     private String authorityTitle;
 
     @Column(name = "authority_emails")
-    private List<String> authorityEmails;
+    private String authorityEmails;
 
     @Column(name = "config_value")
     private Long configValue;
@@ -51,7 +52,12 @@ public class MailConfig {
     public MailConfig(MailConfigDto mailConfigDto) {
         this.id = mailConfigDto.getId();
         this.authorityTitle = mailConfigDto.getAuthorityTitle();
-        this.authorityEmails = mailConfigDto.getAuthorityEmails();
+        if(mailConfigDto.getAuthorityEmails() != null && !mailConfigDto.getAuthorityEmails().isEmpty()) {
+            this.authorityEmails = String.join(",", mailConfigDto.getAuthorityEmails());
+        } else {
+            this.authorityEmails = StringUtils.EMPTY;
+        }
+        this.authorityEmails = String.join(",", mailConfigDto.getAuthorityEmails());
         this.configValue = mailConfigDto.getConfigValue();
         this.active = mailConfigDto.isActive();
         this.createdBy = mailConfigDto.getCreatedBy();
