@@ -25,9 +25,11 @@ import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.enums.RequesterType;
 import org.upsmf.grievance.enums.TicketPriority;
 import org.upsmf.grievance.enums.TicketStatus;
+import org.upsmf.grievance.model.EmailDetails;
 import org.upsmf.grievance.model.es.Ticket;
 import org.upsmf.grievance.model.reponse.TicketResponse;
 import org.upsmf.grievance.repository.es.TicketRepository;
+import org.upsmf.grievance.service.EmailService;
 import org.upsmf.grievance.service.SearchService;
 import org.upsmf.grievance.service.TicketService;
 
@@ -67,6 +69,11 @@ public class SearchServiceImpl implements SearchService {
     @Value("${assessment}")
     private String ASSESSMENT;
 
+    @Autowired
+    private EmailService emailService;
+
+    @Value("${ticket.escalation.mail.subject.for.raiser}")
+    private String ticketEscalationMailSubjectForRaiser;
 
     private Map<String, Object> departmentNameResponse = new HashMap<>();
     private Map<String, Object> performanceIndicatorsResponse = new HashMap<>();
@@ -197,9 +204,17 @@ public class SearchServiceImpl implements SearchService {
                 @Override
                 public void run() {
                     ticketService.updateTicket(Long.parseLong(searchHit.get("ticket_id").toString()));
+                    // send mail to raiser
+                    notifyRaiser(Long.parseLong(searchHit.get("ticket_id").toString()));
                 }
             });
         }
+    }
+
+    private void notifyRaiser(Long ticketId) {
+        org.upsmf.grievance.model.Ticket ticket = ticketService.getTicketById(ticketId);
+        EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject(ticketEscalationMailSubjectForRaiser.concat(" - ").concat(String.valueOf(ticket.getId()))).recipient(ticket.getEmail()).build();
+        emailService.sendUpdateTicketMail(resolutionOfYourGrievance, ticket);
     }
 
     private SearchResponse getSearchResponseFromES(SearchSourceBuilder searchSourceBuilder) {
