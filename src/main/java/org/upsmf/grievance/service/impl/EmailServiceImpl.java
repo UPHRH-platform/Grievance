@@ -535,4 +535,43 @@ public class EmailServiceImpl implements EmailService {
             log.error("Error while Sending Mail", e);
         }
     }
+
+    @Override
+    public void sendMailToRaiserForEscalatedTicket(EmailDetails details, Ticket ticket) {
+        // Try block to check for exceptions
+        Runnable mailThread = () -> {   // lambda expression
+            mailToRaiserForEscalatedTicket(details, ticket);
+        };
+        new Thread(mailThread).start();
+    }
+
+    private void mailToRaiserForEscalatedTicket(EmailDetails details, Ticket ticket) {
+        try {
+            MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                public void prepare(MimeMessage mimeMessage) throws Exception {
+                    MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+                    message.setTo(details.getRecipient());
+                    message.setSubject(details.getSubject());
+
+                    VelocityContext velocityContext = new VelocityContext();
+                    velocityContext.put("first_name", ticket.getFirstName());
+                    velocityContext.put("id", ticket.getId());
+                    // signature
+                    createCommonMailSignature(velocityContext);
+                    // merge mail body
+                    StringWriter stringWriter = new StringWriter();
+                    velocityEngine.mergeTemplate("templates/raiser_escalation_ticket.vm", "UTF-8", velocityContext, stringWriter);
+
+                    message.setText(stringWriter.toString(), true);
+                }
+            };
+            // Sending the mail
+            javaMailSender.send(preparator);
+            log.info("create ticket mail Sent Successfully...");
+        }
+        // Catch block to handle the exceptions
+        catch (Exception e) {
+            log.error("Error while Sending Mail", e);
+        }
+    }
 }
