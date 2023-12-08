@@ -214,7 +214,7 @@ public class SearchServiceImpl implements SearchService {
     private void notifyRaiser(Long ticketId) {
         org.upsmf.grievance.model.Ticket ticket = ticketService.getTicketById(ticketId);
         EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject(ticketEscalationMailSubjectForRaiser.concat(" - ").concat(String.valueOf(ticket.getId()))).recipient(ticket.getEmail()).build();
-        emailService.sendUpdateTicketMail(resolutionOfYourGrievance, ticket);
+        emailService.sendMailToRaiserForEscalatedTicket(resolutionOfYourGrievance, ticket);
     }
 
     private SearchResponse getSearchResponseFromES(SearchSourceBuilder searchSourceBuilder) {
