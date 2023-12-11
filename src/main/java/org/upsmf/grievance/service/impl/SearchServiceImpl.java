@@ -719,4 +719,11 @@ public class SearchServiceImpl implements SearchService {
         finalQuery.must(timestampSearchQuery);
         return finalQuery;
     }
+
+    /**
+     * Method to get statistical data
+     */
+    private void getTicketStatisticsByUser() {
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+    }
 }
