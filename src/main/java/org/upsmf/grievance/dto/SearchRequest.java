@@ -38,4 +38,6 @@ public class SearchRequest {
 
     private Map<String, String> sort;
 
+    private Long ticketUserTypeId;
+
 }

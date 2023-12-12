@@ -4,6 +4,7 @@ package org.upsmf.grievance.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,14 +16,15 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.mail.javamail.MimeMessagePreparator;
 import org.springframework.stereotype.Service;
 import org.upsmf.grievance.enums.Department;
-import org.upsmf.grievance.model.AssigneeTicketAttachment;
-import org.upsmf.grievance.model.EmailDetails;
-import org.upsmf.grievance.model.Ticket;
-import org.upsmf.grievance.model.User;
-import org.upsmf.grievance.repository.DepartmentRepository;
+import org.upsmf.grievance.exception.DataUnavailabilityException;
+import org.upsmf.grievance.exception.InvalidDataException;
+import org.upsmf.grievance.model.*;
+import org.upsmf.grievance.repository.TicketDepartmentRepository;
+import org.upsmf.grievance.repository.UserDepartmentRepository;
 import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.repository.UserRoleRepository;
 import org.upsmf.grievance.service.EmailService;
+import org.upsmf.grievance.service.TicketDepartmentService;
 import org.upsmf.grievance.util.DateUtil;
 
 import javax.mail.MessagingException;
@@ -33,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 // Annotation
 @Service
@@ -52,7 +55,7 @@ public class EmailServiceImpl implements EmailService {
     private UserRepository userRepository;
 
     @Autowired
-    private DepartmentRepository departmentRepository;
+    private UserDepartmentRepository userDepartmentRepository;
 
     @Value("${spring.mail.username}")
     private String sender;
@@ -60,8 +63,13 @@ public class EmailServiceImpl implements EmailService {
     @Value("${site.url}")
     private String siteUrl;
 
+    @Autowired
+    private TicketDepartmentRepository ticketDepartmentRepository;
+
     @Override
     public void sendCreateTicketMail(EmailDetails details, Ticket ticket) {
+//        getUserByDepartmentId(ticket.getTicketDepartment().getId());
+
         // sending mail activity in seperate thread
         Runnable mailThread = () -> {   // lambda expression
             sendMailToRaiser(details, ticket);
@@ -108,12 +116,17 @@ public class EmailServiceImpl implements EmailService {
                     message.setTo(details.getRecipient());
                     message.setSubject(details.getSubject());
 
+                    String departmentName = "";
+                    if (ticket.getTicketDepartment() != null) {
+                        departmentName = ticket.getTicketDepartment().getTicketDepartmentName();
+                    }
+
                     List<Department> departmentList = Department.getById(Integer.parseInt(ticket.getAssignedToId()));
                     VelocityContext velocityContext = new VelocityContext();
                     velocityContext.put("first_name", ticket.getFirstName());
                     velocityContext.put("id", ticket.getId());
                     velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
-                    velocityContext.put("department", departmentList!=null&&!departmentList.isEmpty()?departmentList.get(0).getCode():"Others");
+                    velocityContext.put("department", departmentName);
                     velocityContext.put("comment", comment);
                     velocityContext.put("url", feedbackUrl);
 
@@ -145,12 +158,17 @@ public class EmailServiceImpl implements EmailService {
                     message.setTo(details.getRecipient());
                     message.setSubject(details.getSubject());
 
+                    String departmentName = "";
+                    if (ticket.getTicketDepartment() != null) {
+                        departmentName = ticket.getTicketDepartment().getTicketDepartmentName();
+                    }
+
                     List<Department> departmentList = Department.getById(Integer.parseInt(ticket.getAssignedToId()));
                     VelocityContext velocityContext = new VelocityContext();
                     velocityContext.put("first_name", ticket.getFirstName());
                     velocityContext.put("id", ticket.getId());
                     velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
-                    velocityContext.put("department", departmentList!=null&&!departmentList.isEmpty()?departmentList.get(0).getCode():"Others");
+                    velocityContext.put("department", departmentName);
                     velocityContext.put("comment", comment);
                     velocityContext.put("support_email_address","upmedicalfaculty@upsmfac.org");
                     velocityContext.put("support_phone_number","Phone: (0522) 2238846, 2235964, 2235965, 3302100");
@@ -222,13 +240,21 @@ public class EmailServiceImpl implements EmailService {
                         message.setTo(x.getEmail());
                         message.setSubject(details.getSubject());
 
-                        List<Department> departmentList = Department.getById(Integer.parseInt(ticket.getAssignedToId()));
+//                        List<Department> departmentList = Department.getById(Integer.parseInt(ticket.getAssignedToId()));
+
+                        String departmentName = "";
+                        Optional<UserDepartment> userDepartmentOptional = getUserDepartmentByAssignedTo(ticket.getAssignedToId());
+
+                        if (userDepartmentOptional.isPresent()) {
+                            departmentName = userDepartmentOptional.get().getDepartmentName();
+                        }
+
                         VelocityContext velocityContext = new VelocityContext();
                         velocityContext.put("first_name", x.getFirstName());
                         velocityContext.put("id", ticket.getId());
                         velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                         velocityContext.put("priority", ticket.getPriority());
-                        velocityContext.put("department", departmentList != null && !departmentList.isEmpty() ? departmentList.get(0).getCode() : "Others");
+                        velocityContext.put("department", departmentName);
                         velocityContext.put("status", ticket.getStatus().name());
                         velocityContext.put("site_url", siteUrl);
                         // signature
@@ -251,26 +277,78 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
-    private List<User> getUsersByDepartment(String assignedToId) {
-        List<Department> departmentList = Department.getById(Integer.parseInt(assignedToId));
-        if(departmentList != null && !departmentList.isEmpty()) {
-            String departmentName = departmentList.get(0).getCode();
-            List<org.upsmf.grievance.model.Department> userDepartments = departmentRepository.findAllByDepartmentName(departmentName);
-            if(userDepartments != null && !userDepartments.isEmpty()){
-                List<Long> userIds = new ArrayList<>();
-                userDepartments.stream().forEach(x -> userIds.add(x.getUserId()));
-                if(!userIds.isEmpty()) {
-                    List<User> users = new ArrayList<>();
-                    userIds.stream().forEach(x -> {
-                        Optional<User> fetchedUser = userRepository.findById(x);
-                        if(fetchedUser.isPresent()) {
-                            users.add(fetchedUser.get());
-                        }
-                    });
-                    return users;
+    private Optional<UserDepartment> getUserDepartmentByAssignedTo(String assignedToId) {
+        if (!StringUtils.isBlank(assignedToId)) {
+            try {
+                Long userId = Long.valueOf(assignedToId);
+
+                Optional<User> userOptional = userRepository.findById(userId);
+                if (!userOptional.isPresent()) {
+                    log.error("Unable to find assigned to mapping with existing user set");
+                    throw new DataUnavailabilityException("Unable to find assigned to mapping with existing user set");
                 }
+
+                Optional.ofNullable(userOptional.get().getUserDepartment());
+
+            } catch (NumberFormatException e) {
+                log.error("Error while parsing assinged to");
+                throw new InvalidDataException("AssignedTo id only support number");
+            } catch (Exception e) {
+                log.error("Error while calculating AssignedTo");
+                throw new DataUnavailabilityException("Unable to get AssignedTo value");
             }
         }
+
+        return Optional.empty();
+    }
+
+    private List<User> getUsersByDepartment(String assignedToId) {
+        if (!StringUtils.isBlank(assignedToId)) {
+            if (assignedToId.equalsIgnoreCase("-1")) {
+                return userRepository.findByUserDepartment(null);
+            }
+
+            try {
+                Long userId = Long.valueOf(assignedToId);
+
+                Optional<User> userOptional = userRepository.findById(userId);
+                if (!userOptional.isPresent()) {
+                    log.error("Unable to find assigned to mapping with existing user set");
+                    throw new DataUnavailabilityException("Unable to find assigned to mapping with existing user set");
+                }
+
+                return Collections.singletonList(userOptional.get());
+            } catch (NumberFormatException e) {
+                log.error("Error while parsing assinged to");
+                throw new InvalidDataException("AssignedTo id only support number");
+            } catch (Exception e) {
+                log.error("Error while calculating AssignedTo");
+                throw new DataUnavailabilityException("Unable to get AssignedTo value");
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    private List<User> getUsersByDepartment_old(String assignedToId) {
+//        List<Department> departmentList = Department.getById(Integer.parseInt(assignedToId));
+//        if(departmentList != null && !departmentList.isEmpty()) {
+//            String departmentName = departmentList.get(0).getCode();
+//            List<UserDepartment> userUserDepartments = userDepartmentRepository.findAllByDepartmentName(departmentName);
+//            if(userUserDepartments != null && !userUserDepartments.isEmpty()){
+//                List<Long> userIds = new ArrayList<>();
+//                userUserDepartments.stream().forEach(x -> userIds.add(x.getUserId()));
+//                if(!userIds.isEmpty()) {
+//                    List<User> users = new ArrayList<>();
+//                    userIds.stream().forEach(x -> {
+//                        Optional<User> fetchedUser = userRepository.findById(x);
+//                        if(fetchedUser.isPresent()) {
+//                            users.add(fetchedUser.get());
+//                        }
+//                    });
+//                    return users;
+//                }
+//            }
+//        }
         return Collections.emptyList();
     }
 
@@ -292,7 +370,7 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("id", ticket.getId());
                         velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                         velocityContext.put("priority", ticket.getPriority());
-                        velocityContext.put("department", departmentList != null && !departmentList.isEmpty() ? departmentList.get(0).getCode() : "Others");
+//                        velocityContext.put("userDepartment", departmentList != null && !departmentList.isEmpty() ? departmentList.get(0).getCode() : "Others");
                         velocityContext.put("status", ticket.getStatus().name());
                         // signature
                         createCommonMailSignature(velocityContext);
@@ -314,6 +392,10 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    /** ununsed method
+     * @param details
+     * @param ticket
+     */
     private void sendMailToGrievanceNodal(EmailDetails details, Ticket ticket) {
         try {
             List<User> users = getUsersByDepartment(String.valueOf(-1));
@@ -332,7 +414,7 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("id", ticket.getId());
                         velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                         velocityContext.put("priority", ticket.getPriority());
-                        velocityContext.put("department", departmentList != null && !departmentList.isEmpty() ? departmentList.get(0).getCode() : "Others");
+//                        velocityContext.put("userDepartment", departmentList != null && !departmentList.isEmpty() ? departmentList.get(0).getCode() : "Others");
                         velocityContext.put("status", ticket.getStatus().name());
                         // signature
                         createCommonMailSignature(velocityContext);
@@ -506,13 +588,20 @@ public class EmailServiceImpl implements EmailService {
                         message.setTo(user.getEmail());
                         message.setSubject(details.getSubject());
 
+                        String departmentName = "";
+                        Optional<UserDepartment> userDepartmentOptional = getUserDepartmentByAssignedTo(ticket.getAssignedToId());
+
+                        if (userDepartmentOptional.isPresent()) {
+                            departmentName = userDepartmentOptional.get().getDepartmentName();
+                        }
+
                         List<Department> departmentList = Department.getById(Integer.parseInt(ticket.getAssignedToId()));
                         VelocityContext velocityContext = new VelocityContext();
                         velocityContext.put("first_name", user.getFirstName());
                         velocityContext.put("id", ticket.getId());
                         velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                         velocityContext.put("priority", ticket.getPriority());
-                        velocityContext.put("department", departmentList != null && !departmentList.isEmpty() ? departmentList.get(0).getCode() : "Others");
+                        velocityContext.put("department", departmentName);
                         velocityContext.put("status", ticket.getStatus().name());
                         velocityContext.put("site_url", siteUrl);
                         // signature

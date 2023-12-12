@@ -7,7 +7,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.stereotype.Repository;
 import org.upsmf.grievance.model.User;
+import org.upsmf.grievance.model.UserDepartment;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository("userRepository")
@@ -25,4 +27,8 @@ public interface UserRepository extends PagingAndSortingRepository<User,Long> {
             + "OR LOWER(u.lastname) LIKE LOWER(CONCAT('%', ?1,'%'))"
             + "OR LOWER(u.phoneNumber) LIKE LOWER(CONCAT('%', ?1,'%'))")
     Page<User> findByEmailWithPagination(String searchKeyword, Pageable pageable);
+
+    List<User> findByUserDepartment(Long departmentId);
+
+    List<User> findAllByUserDepartmentIn(List<UserDepartment> userDepartmentList);
 }
