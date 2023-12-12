@@ -23,7 +23,7 @@ public class AssigneeTicketAttachment {
     @Column(name = "user_id", nullable = false)
     private String userId;
 
-    @Lob
+//    @Lob
     @Column(name = "attachment_url", nullable = false)
     private String attachment_url;
 }

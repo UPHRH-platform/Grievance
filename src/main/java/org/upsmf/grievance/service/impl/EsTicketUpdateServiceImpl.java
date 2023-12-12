@@ -65,9 +65,7 @@ public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
                 if (esTicketList != null && !esTicketList.isEmpty()) {
                     for (org.upsmf.grievance.model.es.Ticket ticket : esTicketList) {
                         String updatedName = updateUserDto.getFirstName() + " " + updateUserDto.getLastName();
-                        ticket.setJunkedBy(updatedName);
-
-                        ticket.setJunkedBy(updatedName);
+                        ticket.setJunkedByName(updatedName);
                     }
 
                     esTicketRepository.saveAll(esTicketList);
