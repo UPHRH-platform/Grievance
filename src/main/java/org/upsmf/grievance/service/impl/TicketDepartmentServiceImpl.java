@@ -121,6 +121,8 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
                     .map(ticketDepartment -> TicketDepartmentDto.builder()
                             .ticketDepartmentId(ticketDepartment.getId())
                             .ticketDepartmentName(ticketDepartment.getTicketDepartmentName())
+                            .ticketCouncilId(ticketDepartment.getTicketCouncilId())
+                            .ticketCouncilName(getCouncilName(ticketDepartment.getTicketCouncilId()))
                             .status(ticketDepartment.getStatus())
                             .build())
                     .collect(Collectors.toList());
@@ -129,6 +131,19 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
         }
 
         return Collections.emptyList();
+    }
+
+    private String getCouncilName(Long councilId) {
+        String councilName = "";
+        if (councilId != null) {
+            Optional<TicketCouncil> ticketCouncilOptional = ticketCouncilRepository.findById(councilId);
+
+            if (ticketCouncilOptional.isPresent()) {
+                councilName = ticketCouncilOptional.get().getTicketCouncilName();
+            }
+        }
+
+        return councilName;
     }
 
     /**

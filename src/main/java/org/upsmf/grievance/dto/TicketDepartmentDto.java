@@ -22,5 +22,7 @@ public class TicketDepartmentDto {
     @NotNull(message = "Ticket council id is required")
     private Long ticketCouncilId;
 
+    private String ticketCouncilName;
+
     private Boolean status;
 }
