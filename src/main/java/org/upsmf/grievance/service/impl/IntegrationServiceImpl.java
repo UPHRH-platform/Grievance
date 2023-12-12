@@ -787,6 +787,11 @@ public class IntegrationServiceImpl implements IntegrationService {
             attributeMap.put("departmentName", userDepartment.getDepartmentName());
             attributeMap.put("councilId", userDepartment.getCouncilId());
             attributeMap.put("councilName", userDepartment.getCouncilName());
+        } else {
+            attributeMap.put("departmentId", null);
+            attributeMap.put("departmentName", null);
+            attributeMap.put("councilId", null);
+            attributeMap.put("councilName", null);
         }
 
         boolean enabled = false;
