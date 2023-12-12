@@ -12,7 +12,7 @@ import org.upsmf.grievance.dto.UpdateUserDto;
 import org.upsmf.grievance.dto.UserResponseDto;
 import org.upsmf.grievance.exception.CustomException;
 import org.upsmf.grievance.exception.UserException;
-import org.upsmf.grievance.model.Department;
+import org.upsmf.grievance.model.UserDepartment;
 import org.upsmf.grievance.model.User;
 import org.upsmf.grievance.service.IntegrationService;
 import org.upsmf.grievance.util.ErrorCode;
@@ -58,31 +58,47 @@ public class UserController {
         }
     }
 
-    private ResponseEntity<UserResponseDto> createUserResponse(User body) {
-        Map<String, List<String>> attributes = new HashMap<>();
-        attributes.put("Role", Arrays.asList(body.getRoles()));
-        List<String> department = new ArrayList<>();
-        if(body.getDepartment() != null && !body.getDepartment().isEmpty()) {
-            for(Department depart : body.getDepartment()) {
-                department.add(depart.getDepartmentName());
-            }
+    private ResponseEntity<UserResponseDto> createUserResponse(User user) {
+//        Map<String, List<String>> attributes = new HashMap<>();
+//        attributes.put("Role", Arrays.asList(body.getRoles()));
+//        List<String> department = new ArrayList<>();
+//        if(body.getUserDepartment() != null && !body.getUserDepartment().isEmpty()) {
+//            for(UserDepartment depart : body.getUserDepartment()) {
+//                department.add(depart.getDepartmentName());
+//            }
+//        }
+//        attributes.put("departmentName", department);
+//        attributes.put("phoneNumber", Arrays.asList(body.getPhoneNumber()));
+
+
+
+        Map<String, Object> attributeMap = new HashMap<>();
+        attributeMap.put("phoneNumber", user.getPhoneNumber());
+        attributeMap.put("role", user.getRoles());
+
+        UserDepartment userDepartment = user.getUserDepartment();
+
+        if (userDepartment != null) {
+            attributeMap.put("departmentId", userDepartment.getDepartmentId());
+            attributeMap.put("departmentName", userDepartment.getDepartmentName());
+            attributeMap.put("councilId", userDepartment.getCouncilId());
+            attributeMap.put("councilName", userDepartment.getCouncilName());
         }
-        attributes.put("departmentName", department);
-        attributes.put("phoneNumber", Arrays.asList(body.getPhoneNumber()));
+
         boolean enabled = false;
-        if(body.getStatus() == 1) {
+        if(user.getStatus() == 1) {
             enabled = true;
         }
         UserResponseDto userResponseDto = UserResponseDto.builder()
-                .email(body.getEmail())
-                .emailVerified(body.isEmailVerified())
+                .email(user.getEmail())
+                .emailVerified(user.isEmailVerified())
                 .enabled(enabled)
-                .firstName(body.getFirstName())
-                .lastName(body.getLastname())
-                .id(body.getId())
-                .keycloakId(body.getKeycloakId())
-                .username(body.getUsername())
-                .attributes(attributes)
+                .firstName(user.getFirstName())
+                .lastName(user.getLastname())
+                .id(user.getId())
+                .keycloakId(user.getKeycloakId())
+                .username(user.getUsername())
+                .attributes(attributeMap)
                 .build();
         return ResponseEntity.ok().body(userResponseDto);
     }

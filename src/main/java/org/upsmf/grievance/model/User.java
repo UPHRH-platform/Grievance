@@ -43,9 +43,12 @@ public class User {
 
     private String[] roles;
 
-    @OneToMany(targetEntity = Department.class, mappedBy = "userId", fetch = FetchType.EAGER)
-    @Fetch(value = FetchMode.SUBSELECT)
-    private List<Department> department;
+//    @OneToMany(targetEntity = UserDepartment.class, mappedBy = "userId", fetch = FetchType.EAGER)
+//    @Fetch(value = FetchMode.SUBSELECT)
+//    private List<UserDepartment> userDepartment;
+
+    @ManyToOne(targetEntity = UserDepartment.class, fetch = FetchType.EAGER)
+    private UserDepartment userDepartment;
 
     @OneToMany(fetch = FetchType.EAGER)
     @Fetch(value = FetchMode.SUBSELECT)
