@@ -38,9 +38,6 @@ public class Ticket {
     @Field(name = "requester_email")
     private String email;
 
-    @Field(name = "requester_type")
-    private RequesterType requesterType;
-
     @Field(name = "assigned_to_id")
     private String assignedToId;
 
@@ -56,11 +53,12 @@ public class Ticket {
     @Field(name = "junked_by")
     private String junkedBy;
 
-//    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss.S", timezone = "Asia/Kolkata")
+    @Field(name = "junked_by_name")
+    private String junkedByName;
+
     @Field(name = "created_date")
     private String createdDate;
 
-//    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss.S", timezone = "Asia/Kolkata")
     @Field(name = "updated_date")
     private String updatedDate;
 
@@ -76,7 +74,6 @@ public class Ticket {
     @Field(name = "is_escalated")
     private Boolean escalated;
 
-//    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss.S", timezone = "Asia/Kolkata")
     @Field(name = "escalated_date")
     private String escalatedDate;
 
@@ -107,5 +104,23 @@ public class Ticket {
 
     @Field(name = "reminder_counter")
     private Long reminderCounter;
+
+    @Field(name = "ticket_user_type_id")
+    private Long ticketUserTypeId;
+
+    @Field(name = "ticket_user_type_name")
+    private String ticketUserTypeName;
+
+    @Field(name = "ticket_council_id")
+    private Long ticketCouncilId;
+
+    @Field(name = "ticket_council_name")
+    private String ticketCouncilName;
+
+    @Field(name = "ticket_department_id")
+    private Long ticketDepartmentId;
+
+    @Field(name = "ticket_department_name")
+    private String ticketDepartmentName;
 
 }
