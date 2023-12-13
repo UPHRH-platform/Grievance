@@ -66,9 +66,9 @@ public class SchedulerConfigController {
     }
 
     @PostMapping("/activate/{id}")
-    public ResponseEntity activateMailConfig(@PathVariable("id") long id) {
+    public ResponseEntity activateMailConfig(@PathVariable("id") long id, @RequestParam Long userId) {
         try {
-            MailConfigDto mailConfig = schedulerConfigService.activateConfigById(id);
+            MailConfigDto mailConfig = schedulerConfigService.activateConfigById(id, userId);
             return new ResponseEntity(new Response(HttpStatus.OK.value(), mailConfig), HttpStatus.OK);
         } catch (CustomException e) {
             log.error("Error in while creating user - at controller");
@@ -80,9 +80,9 @@ public class SchedulerConfigController {
     }
 
     @PostMapping("/deactivate/{id}")
-    public ResponseEntity deactivateMailConfig(@PathVariable("id") long id) {
+    public ResponseEntity deactivateMailConfig(@PathVariable("id") long id, @RequestParam Long userId) {
         try {
-            MailConfigDto mailConfig = schedulerConfigService.deactivateConfigById(id);
+            MailConfigDto mailConfig = schedulerConfigService.deactivateConfigById(id, userId);
             return new ResponseEntity(new Response(HttpStatus.OK.value(), mailConfig), HttpStatus.OK);
         } catch (CustomException e) {
             log.error("Error in while creating user - at controller");

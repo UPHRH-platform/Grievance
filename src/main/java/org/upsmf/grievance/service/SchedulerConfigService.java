@@ -12,7 +12,7 @@ public interface SchedulerConfigService {
 
     MailConfigDto update(MailConfigDto mailConfigDto);
 
-    MailConfigDto activateConfigById(Long id);
+    MailConfigDto activateConfigById(Long id, Long userId);
 
-    MailConfigDto deactivateConfigById(Long id);
+    MailConfigDto deactivateConfigById(Long id, Long userId);
 }
