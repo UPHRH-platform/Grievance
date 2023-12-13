@@ -15,6 +15,8 @@ import org.upsmf.grievance.model.reponse.Response;
 import org.upsmf.grievance.service.SchedulerConfigService;
 import org.upsmf.grievance.util.ErrorCode;
 
+import java.util.List;
+
 @Slf4j
 @Controller
 @RequestMapping("/api/config/mail")
@@ -65,10 +67,10 @@ public class SchedulerConfigController {
         }
     }
 
-    @PostMapping("/activate/{id}")
-    public ResponseEntity activateMailConfig(@PathVariable("id") long id, @RequestParam Long userId) {
+    @PostMapping("/status/update")
+    public ResponseEntity activateMailConfig(@RequestParam Long id, @RequestParam Boolean active, @RequestParam Long userId) {
         try {
-            MailConfigDto mailConfig = schedulerConfigService.activateConfigById(id, userId);
+            MailConfigDto mailConfig = schedulerConfigService.activateConfigById(id, active, userId);
             return new ResponseEntity(new Response(HttpStatus.OK.value(), mailConfig), HttpStatus.OK);
         } catch (CustomException e) {
             log.error("Error in while creating user - at controller");
@@ -79,10 +81,10 @@ public class SchedulerConfigController {
         }
     }
 
-    @PostMapping("/deactivate/{id}")
-    public ResponseEntity deactivateMailConfig(@PathVariable("id") long id, @RequestParam Long userId) {
+    @GetMapping("/all")
+    public ResponseEntity getAllMailConfig() {
         try {
-            MailConfigDto mailConfig = schedulerConfigService.deactivateConfigById(id, userId);
+            List<MailConfigDto> mailConfig = schedulerConfigService.getAll();
             return new ResponseEntity(new Response(HttpStatus.OK.value(), mailConfig), HttpStatus.OK);
         } catch (CustomException e) {
             log.error("Error in while creating user - at controller");
