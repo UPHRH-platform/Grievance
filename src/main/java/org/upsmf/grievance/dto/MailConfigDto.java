@@ -1,9 +1,6 @@
 package org.upsmf.grievance.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.ToString;
+import lombok.*;
 import org.apache.commons.lang.ArrayUtils;
 import org.upsmf.grievance.model.MailConfig;
 
@@ -13,6 +10,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 @ToString
 @Builder
 public class MailConfigDto {
