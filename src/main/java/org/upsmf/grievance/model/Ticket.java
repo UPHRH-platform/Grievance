@@ -38,9 +38,6 @@ public class Ticket {
     @Column(name = "requester_email")
     private String email;
 
-    @Column(name = "requester_type")
-    private RequesterType requesterType;
-
     @Column(name = "assigned_to_id")
     private String assignedToId;
 
@@ -81,7 +78,7 @@ public class Ticket {
     private TicketStatus status = TicketStatus.OPEN;
 
     @Column(name = "request_type")
-    private String requestType;
+    private String requestType;         //TODO: rkr: userDepartment replace with configurable userDepartment
 
     @Column(name = "priority")
     private TicketPriority priority = TicketPriority.LOW;
@@ -104,4 +101,13 @@ public class Ticket {
     @OneToMany(targetEntity = AssigneeTicketAttachment.class, mappedBy = "ticketId", fetch = FetchType.EAGER)
     @Fetch(value = FetchMode.SUBSELECT)
     private List<AssigneeTicketAttachment> assigneeTicketAttachment;
+
+    @ManyToOne(targetEntity = TicketUserType.class, fetch = FetchType.EAGER)
+    private TicketUserType ticketUserType;
+
+    @ManyToOne(targetEntity = TicketCouncil.class, fetch = FetchType.EAGER)
+    private TicketCouncil ticketCouncil;
+
+    @ManyToOne(targetEntity = TicketDepartment.class, fetch = FetchType.EAGER)
+    private TicketDepartment ticketDepartment;
 }

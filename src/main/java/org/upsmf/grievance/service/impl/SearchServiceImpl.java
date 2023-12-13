@@ -25,9 +25,12 @@ import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.enums.RequesterType;
 import org.upsmf.grievance.enums.TicketPriority;
 import org.upsmf.grievance.enums.TicketStatus;
+import org.upsmf.grievance.model.EmailDetails;
+import org.upsmf.grievance.exception.InvalidDataException;
 import org.upsmf.grievance.model.es.Ticket;
 import org.upsmf.grievance.model.reponse.TicketResponse;
 import org.upsmf.grievance.repository.es.TicketRepository;
+import org.upsmf.grievance.service.EmailService;
 import org.upsmf.grievance.service.SearchService;
 import org.upsmf.grievance.service.TicketService;
 
@@ -67,6 +70,11 @@ public class SearchServiceImpl implements SearchService {
     @Value("${assessment}")
     private String ASSESSMENT;
 
+    @Autowired
+    private EmailService emailService;
+
+    @Value("${ticket.escalation.mail.subject.for.raiser}")
+    private String ticketEscalationMailSubjectForRaiser;
 
     private Map<String, Object> departmentNameResponse = new HashMap<>();
     private Map<String, Object> performanceIndicatorsResponse = new HashMap<>();
@@ -197,9 +205,17 @@ public class SearchServiceImpl implements SearchService {
                 @Override
                 public void run() {
                     ticketService.updateTicket(Long.parseLong(searchHit.get("ticket_id").toString()));
+                    // send mail to raiser
+                    notifyRaiser(Long.parseLong(searchHit.get("ticket_id").toString()));
                 }
             });
         }
+    }
+
+    private void notifyRaiser(Long ticketId) {
+        org.upsmf.grievance.model.Ticket ticket = ticketService.getTicketById(ticketId);
+        EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject(ticketEscalationMailSubjectForRaiser.concat(" - ").concat(String.valueOf(ticket.getId()))).recipient(ticket.getEmail()).build();
+        emailService.sendMailToRaiserForEscalatedTicket(resolutionOfYourGrievance, ticket);
     }
 
     private SearchResponse getSearchResponseFromES(SearchSourceBuilder searchSourceBuilder) {
@@ -470,14 +486,14 @@ public class SearchServiceImpl implements SearchService {
             case "requester_email":
                 esTicket.setEmail((String) entry.getValue());
                 break;
-            case "requester_type":
-                for (RequesterType enumValue : RequesterType.values()) {
-                    if (enumValue.name().equals(entry.getValue().toString())) {
-                        esTicket.setRequesterType(enumValue);
-                        break;
-                    }
-                }
-                break;
+//            case "requester_type":
+//                for (RequesterType enumValue : RequesterType.values()) {
+//                    if (enumValue.name().equals(entry.getValue().toString())) {
+//                        esTicket.setRequesterType(enumValue);
+//                        break;
+//                    }
+//                }
+//                break;
             case "assigned_to_id":
                 esTicket.setAssignedToId(String.valueOf(entry.getValue()));
                 break;
@@ -552,6 +568,24 @@ public class SearchServiceImpl implements SearchService {
             case "is_escalated_to_admin":
                 esTicket.setEscalatedToAdmin(((Boolean) entry.getValue()).booleanValue());
                 break;
+            case "ticket_user_type_id":
+                esTicket.setTicketUserTypeId((longValue = ((Number) entry.getValue()).longValue()));
+                break;
+            case "ticket_user_type_name":
+                esTicket.setTicketUserTypeName(String.valueOf(entry.getValue()));
+                break;
+            case "ticket_council_id":
+                esTicket.setTicketCouncilId((longValue = ((Number) entry.getValue()).longValue()));
+                break;
+            case "ticket_council_name":
+                esTicket.setTicketCouncilName(String.valueOf(entry.getValue()));
+                break;
+            case "ticket_department_id":
+                esTicket.setTicketDepartmentId((longValue = ((Number) entry.getValue()).longValue()));
+                break;
+            case "ticket_department_name":
+                esTicket.setTicketDepartmentName(String.valueOf(entry.getValue()));
+                break;
         }
     }
 
@@ -594,6 +628,46 @@ public class SearchServiceImpl implements SearchService {
             getStatusQuery((List<String>) searchRequest.getFilter().get("status"), finalQuery);
         }
         getJunkQuery(searchRequest.getIsJunk(), finalQuery);
+
+        if (searchRequest.getFilter().get("ticketUserTypeId") != null) {
+            Long ticketUserTypeId = null;
+
+            try {
+                ticketUserTypeId = Long.parseLong(String.valueOf(searchRequest.getFilter().get("ticketUserTypeId")));
+            } catch (NumberFormatException e) {
+                log.error("Error while reading value for ticket user type id");
+                throw new InvalidDataException("Invalid type of ticket user type id - Supports long/numeric");
+            }
+
+            getUserTypeQuery(ticketUserTypeId, finalQuery);
+        }
+
+        if (searchRequest.getFilter().get("ticketCouncilId") != null) {
+            Long tickectCouncilId = null;
+
+            try {
+                tickectCouncilId = Long.parseLong(String.valueOf(searchRequest.getFilter().get("ticketCouncilId")));
+            } catch (NumberFormatException e) {
+                log.error("Error while reading value for ticket council id");
+                throw new InvalidDataException("Invalid type of ticket council id - Supports long/numeric");
+            }
+
+            getTicketCouncilQuery(tickectCouncilId, finalQuery);
+        }
+
+        if (searchRequest.getFilter().get("ticketDepartmentId") != null) {
+            Long ticketDepartmentID = null;
+
+            try {
+                ticketDepartmentID = Long.parseLong(String.valueOf(searchRequest.getFilter().get("ticketDepartmentId")));
+            } catch (NumberFormatException e) {
+                log.error("Error while reading value for ticket department id");
+                throw new InvalidDataException("Invalid type of ticket department id - Supports long/numeric");
+            }
+
+            getTicketDepartmentQuery(ticketDepartmentID, finalQuery);
+        }
+
         getEscalatedTicketsQuery(searchRequest.getIsEscalated(), finalQuery);
         return finalQuery;
     }
@@ -646,6 +720,40 @@ public class SearchServiceImpl implements SearchService {
             BoolQueryBuilder junkSearchQuery = QueryBuilders.boolQuery();
             junkSearchQuery.must(junkMatchQuery);
             finalQuery.must(junkSearchQuery);
+        }
+        return finalQuery;
+    }
+
+    /**
+     * @param userTypeId
+     * @param finalQuery
+     * @return
+     */
+    private BoolQueryBuilder getUserTypeQuery(Long userTypeId, BoolQueryBuilder finalQuery) {
+        if (userTypeId != null) {
+            MatchQueryBuilder ticketUserTypeQuery = QueryBuilders.matchQuery("ticket_user_type_id", userTypeId);
+            BoolQueryBuilder userTypeSearchQuery = QueryBuilders.boolQuery();
+            userTypeSearchQuery.must(ticketUserTypeQuery);
+            finalQuery.must(userTypeSearchQuery);
+        }
+        return finalQuery;
+    }
+
+    private BoolQueryBuilder getTicketCouncilQuery(Long ticketCouncilId, BoolQueryBuilder finalQuery) {
+        if (ticketCouncilId != null) {
+            MatchQueryBuilder ticketCouncilQuery = QueryBuilders.matchQuery("ticket_council_id", ticketCouncilId);
+            BoolQueryBuilder councilSearchQuery = QueryBuilders.boolQuery();
+            councilSearchQuery.must(ticketCouncilQuery);
+            finalQuery.must(councilSearchQuery);
+        }
+        return finalQuery;
+    }
+    private BoolQueryBuilder getTicketDepartmentQuery(Long ticketDepartmentId, BoolQueryBuilder finalQuery) {
+        if (ticketDepartmentId != null) {
+            MatchQueryBuilder ticketDepartmentQuery = QueryBuilders.matchQuery("ticket_department_id", ticketDepartmentId);
+            BoolQueryBuilder ticketDepartmentSearchQuery = QueryBuilders.boolQuery();
+            ticketDepartmentSearchQuery.must(ticketDepartmentQuery);
+            finalQuery.must(ticketDepartmentSearchQuery);
         }
         return finalQuery;
     }

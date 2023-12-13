@@ -13,7 +13,8 @@ import org.upsmf.grievance.dto.TicketRequest;
 import org.upsmf.grievance.dto.UpdateTicketRequest;
 import org.upsmf.grievance.enums.TicketPriority;
 import org.upsmf.grievance.enums.TicketStatus;
-import org.upsmf.grievance.exception.TicketException;
+import org.upsmf.grievance.exception.DataUnavailabilityException;
+import org.upsmf.grievance.exception.InvalidDataException;
 import org.upsmf.grievance.model.*;
 import org.upsmf.grievance.repository.*;
 import org.upsmf.grievance.repository.es.TicketRepository;
@@ -21,13 +22,10 @@ import org.upsmf.grievance.service.EmailService;
 import org.upsmf.grievance.service.OtpService;
 import org.upsmf.grievance.service.TicketService;
 import org.upsmf.grievance.util.DateUtil;
-import org.upsmf.grievance.util.ErrorCode;
 
 import javax.transaction.Transactional;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -36,8 +34,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import static org.upsmf.grievance.enums.Department.*;
 
 @Service
 @Slf4j
@@ -67,7 +63,15 @@ public class TicketServiceImpl implements TicketService {
     @Autowired
     private UserRepository userRepository;
     @Autowired
-    private DepartmentRepository departmentRepository;
+    private UserDepartmentRepository userDepartmentRepository;
+    @Autowired
+    private TicketUserTypeRepository ticketUserTypeRepository;
+    @Autowired
+    private TicketCouncilRepository ticketCouncilRepository;
+
+    @Autowired
+    private TicketDepartmentRepository ticketDepartmentRepository;
+
 
     @Autowired
     private OtpService otpService;
@@ -131,20 +135,22 @@ public class TicketServiceImpl implements TicketService {
     public Ticket save(TicketRequest ticketRequest) throws Exception {
         // validate request
         validateTicketRequest(ticketRequest);
-        // validate OTP
-        boolean isValid = otpService.validateOtp(ticketRequest.getEmail(), ticketRequest.getOtp());
-        if(!isValid) {
-            throw new TicketException("Invalid mail OTP, Please enter correct OTP", ErrorCode.TKT_001,
-                    "Error while matching mail OTP");
-        } else {
-            boolean isMobileOtpValid = otpService.validateMobileOtp(ticketRequest.getPhone(),
-                    ticketRequest.getMobileOtp());
 
-            if (!isMobileOtpValid) {
-                throw new TicketException("Invalid mobile OTP, Please enter correct OTP", ErrorCode.TKT_001,
-                        "Error while matching mobile OTP");
-            }
-        }
+//        Todo: uncomment opt condition
+        // validate OTP
+//        boolean isValid = otpService.validateOtp(ticketRequest.getEmail(), ticketRequest.getOtp());
+//        if(!isValid) {
+//            throw new TicketException("Invalid mail OTP, Please enter correct OTP", ErrorCode.TKT_001,
+//                    "Error while matching mail OTP");
+//        } else {
+//            boolean isMobileOtpValid = otpService.validateMobileOtp(ticketRequest.getPhone(),
+//                    ticketRequest.getMobileOtp());
+//
+//            if (!isMobileOtpValid) {
+//                throw new TicketException("Invalid mobile OTP, Please enter correct OTP", ErrorCode.TKT_001,
+//                        "Error while matching mobile OTP");
+//            }
+//        }
         // set default value for creating ticket
         Ticket ticket = createTicketWithDefault(ticketRequest);
         // create ticket
@@ -166,14 +172,39 @@ public class TicketServiceImpl implements TicketService {
 
         Timestamp currentTimestamp = new Timestamp(DateUtil.getCurrentDate().getTime());
         LocalDateTime escalationDateTime = LocalDateTime.now().plus(Long.valueOf(ticketEscalationDays), ChronoUnit.DAYS);
+
+        Optional<TicketUserType> userTypeOptional = ticketUserTypeRepository
+                .findById(ticketRequest.getTicketUserTypeId());
+
+        if (!userTypeOptional.isPresent()) {
+            throw new DataUnavailabilityException("Ticket User type does not exist");
+        }
+
+        Optional<TicketCouncil> ticketCouncilOptional = ticketCouncilRepository
+                .findById(ticketRequest.getTicketCouncilId());
+
+        if (!ticketCouncilOptional.isPresent()) {
+            throw new DataUnavailabilityException("Ticket cuncil does not exist");
+        }
+
+        Optional<TicketDepartment> ticketDepartmentOptional = ticketDepartmentRepository
+                .findById(ticketRequest.getTicketDepartmentId());
+
+        if (!ticketDepartmentOptional.isPresent()) {
+            throw new DataUnavailabilityException("Ticket department does not exist");
+        }
+
+        Long userId = getFirstActiveUserByDepartmentId(ticketRequest.getTicketDepartmentId(), ticketRequest.getTicketCouncilId());
+
+
         return Ticket.builder()
                 .createdDate(new Timestamp(DateUtil.getCurrentDate().getTime()))
                 .firstName(ticketRequest.getFirstName())
                 .lastName(ticketRequest.getLastName())
                 .phone(ticketRequest.getPhone())
                 .email(ticketRequest.getEmail())
-                .requesterType(ticketRequest.getUserType())
-                .assignedToId(ticketRequest.getCc())
+//                .requesterType(ticketRequest.getUserType()) //TODO: replace with user type
+                .assignedToId(String.valueOf(userId))
                 .description(ticketRequest.getDescription())
                 .updatedDate(currentTimestamp)
                 .lastUpdatedBy("-1")//need to get user details and add id or name
@@ -181,11 +212,61 @@ public class TicketServiceImpl implements TicketService {
                 .escalatedDate(Timestamp.valueOf(escalationDateTime))
                 .escalatedTo("-1")
                 .status(TicketStatus.OPEN)
-                .requestType(ticketRequest.getRequestType())
+                .requestType(ticketRequest.getRequestType()) //TODO: userDepartment details
                 .priority(TicketPriority.LOW)
                 .escalatedBy("-1")
                 .reminderCounter(0L)
+                .ticketUserType(userTypeOptional.get())
+                .ticketCouncil(ticketCouncilOptional.get())
+                .ticketDepartment(ticketDepartmentOptional.get())
                 .build();
+    }
+
+    private @NonNull Long getFirstActiveUserByDepartmentId(Long departmentId, Long councilId) {
+        if ((departmentId != null && councilId == null) || (departmentId == null && councilId != null)) {
+            log.error("Missing one of attrbutes department id or council id - both are allowed or none");
+            throw new InvalidDataException("Both council and department id are allowed or none");
+        }
+
+        if (departmentId == null && councilId == null) {
+            log.info(">>>>>>>>> Did not foound department or council id information - ticket will be unassigned");
+            return -1L;
+        }
+
+        Optional<TicketDepartment> ticketDepartmentOptional = ticketDepartmentRepository
+                .findByIdAndTicketCouncilId(departmentId, councilId);
+
+        if (!ticketDepartmentOptional.isPresent()) {
+            log.error("Unable to find user ticket department");
+            throw new DataUnavailabilityException("Unable to find ticket department");
+        }
+
+        List<UserDepartment> userDepartmentList = userDepartmentRepository
+                .findAllByDepartmentIdAndCouncilId(departmentId, councilId);
+
+        if (userDepartmentList == null || userDepartmentList.isEmpty()) {
+            log.error("Unable to find user departments - department id {} | council id {}", departmentId, councilId);
+            throw new DataUnavailabilityException("Unable to find user department details");
+        }
+
+        List<User> userList = userRepository.findAllByUserDepartmentIn(userDepartmentList);
+
+        if (userList == null || userList.isEmpty()) {
+            log.error("Unable to find user details");
+            throw new DataUnavailabilityException("Unable to find user details");
+        }
+
+        Optional<Long> activeUser = userList.stream()
+                .filter(user -> user.getStatus() == 1)
+                .map(User::getId)
+                .findFirst();
+
+        if (!activeUser.isPresent()) {
+            log.error("Unable to find any acivite user");
+            throw new DataUnavailabilityException("There no active user for given council and department");
+        }
+
+        return activeUser.get();
     }
 
     /**
@@ -322,7 +403,7 @@ public class TicketServiceImpl implements TicketService {
         if(updateTicketRequest.getPriority()!=null) {
             ticket.setPriority(updateTicketRequest.getPriority());
         }
-        if(updateTicketRequest.getIsJunk()!=null) {
+        if(Boolean.TRUE.equals(updateTicketRequest.getIsJunk())) {
             ticket.setJunk(updateTicketRequest.getIsJunk());
             if (updateTicketRequest.getRequestedBy() == null || updateTicketRequest.getRequestedBy().isBlank()) {
                 ticket.setJunkedBy("-1");
@@ -331,7 +412,7 @@ public class TicketServiceImpl implements TicketService {
                 String firstName = user.getFirstName();
                 String lastName = user.getLastname();
                 String junkedBy = firstName + " " + lastName;
-                ticket.setJunkedBy(junkedBy);
+                ticket.setJunkedBy(String.valueOf(user.getId()));
             }
         }
         ticket.setUpdatedDate(new Timestamp(DateUtil.getCurrentDate().getTime()));
@@ -366,6 +447,43 @@ public class TicketServiceImpl implements TicketService {
         log.info(">>>>>>>>>>>>>>>>>>>>>> system time from ticket data: "
                 + ticket.getCreatedDate().toLocalDateTime().format(dateTimeFormatter));
 
+        String assingedToName = "";
+        String junkByName = "";
+
+//        Calculating assingedTo name for ES record
+        if (!org.apache.commons.lang.StringUtils.isBlank(ticket.getAssignedToId()) && ! "-1".equalsIgnoreCase(ticket.getAssignedToId())) {
+            try {
+                Optional<User> userOptional = userRepository.findById(Long.valueOf(ticket.getAssignedToId()));
+
+                if (userOptional.isPresent()) {
+                    assingedToName = userOptional.get().getFirstName() + " " + userOptional.get().getLastname();
+                }
+            }catch (NumberFormatException e) {
+                log.error("Error while parsing assinged to value");
+                throw new InvalidDataException("AssignTo only support number");
+            } catch (Exception e) {
+                log.error("Error while calculating assign to value");
+                throw new InvalidDataException("Invalid assignedTo value");
+            }
+        }
+
+//      Calculating junkedBy name for ES record
+        if (!org.apache.commons.lang.StringUtils.isBlank(ticket.getJunkedBy()) && ! "-1".equalsIgnoreCase(ticket.getJunkedBy())) {
+            try {
+                Optional<User> userOptional = userRepository.findById(Long.valueOf(ticket.getJunkedBy()));
+
+                if (userOptional.isPresent()) {
+                    junkByName = userOptional.get().getFirstName() + " " + userOptional.get().getLastname();
+                }
+            }catch (NumberFormatException e) {
+                log.error("Error while parsing assinged to value");
+                throw new InvalidDataException("AssignTo only support number");
+            } catch (Exception e) {
+                log.error("Error while calculating assign to value");
+                throw new InvalidDataException("Invalid assignedTo value");
+            }
+        }
+
         // get user details based on ID
         return org.upsmf.grievance.model.es.Ticket.builder()
                 .ticketId(ticket.getId())
@@ -373,20 +491,21 @@ public class TicketServiceImpl implements TicketService {
                 .lastName(ticket.getLastName())
                 .phone(ticket.getPhone())
                 .email(ticket.getEmail())
-                .requesterType(ticket.getRequesterType())
+//                .requesterType(ticket.getRequesterType()) //TODO: rkr: replace with user type
                 .assignedToId(ticket.getAssignedToId())
-                .assignedToName("") // get user details based on ID
+                .assignedToName(assingedToName) // get user details based on ID
                 .description(ticket.getDescription())
                 .junk(ticket.isJunk())
                 .junkedBy(ticket.getJunkedBy())
+                .junkedByName(junkByName)
                 .createdDate(ticket.getCreatedDate().toLocalDateTime().format(dateTimeFormatter))
                 .createdDateTS(ticket.getCreatedDate().getTime())
                 .updatedDate(ticket.getUpdatedDate().toLocalDateTime().format(dateTimeFormatter))
                 .updatedDateTS(ticket.getUpdatedDate().getTime())
                 .lastUpdatedBy(ticket.getLastUpdatedBy())
                 .escalated(ticket.isEscalated())
-                .escalatedDate(ticket.getEscalatedDate()!=null?ticket.getEscalatedDate().toLocalDateTime().format(dateTimeFormatter):null)
-                .escalatedDateTS(ticket.getEscalatedDate()!=null?ticket.getEscalatedDate().getTime():-1)
+                .escalatedDate(ticket.getEscalatedDate() != null ? ticket.getEscalatedDate().toLocalDateTime().format(dateTimeFormatter) : null)
+                .escalatedDateTS(ticket.getEscalatedDate() != null ? ticket.getEscalatedDate().getTime() : -1)
                 .status(ticket.getStatus())
                 .requestType(ticket.getRequestType())
                 .priority(ticket.getPriority())
@@ -394,6 +513,12 @@ public class TicketServiceImpl implements TicketService {
                 .escalatedTo(ticket.getEscalatedTo())
                 .escalatedToAdmin(ticket.isEscalatedToAdmin())
                 .reminderCounter(ticket.getReminderCounter())
+                .ticketUserTypeId(ticket.getTicketUserType() != null ? ticket.getTicketUserType().getId() : -1)
+                .ticketUserTypeName(ticket.getTicketUserType() != null ? ticket.getTicketUserType().getUserTypeName() : "")
+                .ticketCouncilId(ticket.getTicketCouncil() != null ? ticket.getTicketCouncil().getId() : -1)
+                .ticketCouncilName(ticket.getTicketCouncil() != null ? ticket.getTicketCouncil().getTicketCouncilName() : "")
+                .ticketDepartmentId(ticket.getTicketDepartment() != null ? ticket.getTicketDepartment().getId() : -1)
+                .ticketDepartmentName(ticket.getTicketDepartment() != null ? ticket.getTicketDepartment().getTicketDepartmentName() : "")
                 .rating(0L).build();
     }
 
@@ -430,9 +555,14 @@ public class TicketServiceImpl implements TicketService {
             throw new IllegalArgumentException("Invalid phone number");
         }
 
-        if (ticketRequest.getUserType() == null) {
-            throw new IllegalArgumentException("User type is required");
+//        if (ticketRequest.getUserType() == null) {
+//            throw new IllegalArgumentException("User type is required");
+//        }
+
+        if (ticketRequest.getTicketUserTypeId() == null) {
+            throw new IllegalArgumentException("Ticket User type is required");
         }
+
         if (ticketRequest.getAttachmentUrls() != null) {
             for (String attachmentUrl : ticketRequest.getAttachmentUrls()) {
                 if (StringUtils.isBlank(attachmentUrl)) {

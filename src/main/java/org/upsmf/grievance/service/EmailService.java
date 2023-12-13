@@ -26,4 +26,6 @@ public interface EmailService {
     void sendMailToDGME(EmailDetails details, JsonNode assessmentMatrix);
 
     public void sendMailToNodalOfficers(EmailDetails details, Ticket ticket);
+
+    void sendMailToRaiserForEscalatedTicket(EmailDetails details, Ticket ticket);
 }

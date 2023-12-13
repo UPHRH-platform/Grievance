@@ -29,5 +29,7 @@ public class UserResponseDto implements Serializable {
 
     private boolean enabled;
 
-    private Map<String, List<String>> attributes;
+//    private Map<String, List<String>> attributes;
+
+    private Map<String, Object> attributes;
 }

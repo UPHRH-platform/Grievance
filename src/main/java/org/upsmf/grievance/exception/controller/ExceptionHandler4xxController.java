@@ -17,6 +17,7 @@ import org.upsmf.grievance.exception.runtime.InvalidRequestException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @ControllerAdvice
@@ -24,6 +25,11 @@ public class ExceptionHandler4xxController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExceptionHandler4xxController.class);
 
+    /**
+     * It generates all error list that occurs when argument validation fails.
+     * @param exception
+     * @return
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, List<String>>> handleValidationErrors(MethodArgumentNotValidException exception) {
 
@@ -33,6 +39,27 @@ public class ExceptionHandler4xxController {
 
         return new ResponseEntity<>(getErrorsMap(errors), new HttpHeaders(), HttpStatus.BAD_REQUEST);
     }
+
+
+
+//    /**
+//     * Maintain error message uniformity with custom exception
+//     * @param exception
+//     * @return
+//     */
+//    @ExceptionHandler(MethodArgumentNotValidException.class)
+//    public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException exception) {
+//
+//        List<String> exceptionMessage = exception.getBindingResult().getFieldErrors().stream()
+//                .map(FieldError::getDefaultMessage)
+//                .collect(Collectors.toList());
+//
+//        Map<String, Object> errorResponse = new HashMap<>();
+//
+//        errorResponse.put("error_message", exceptionMessage);
+//
+//        return new ResponseEntity<>(errorResponse, new HttpHeaders(), HttpStatus.BAD_REQUEST);
+//    }
 
     /**
      * Exception handler for Invalid request exception
