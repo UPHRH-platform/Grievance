@@ -305,7 +305,10 @@ public class EmailServiceImpl implements EmailService {
     private List<User> getUsersByDepartment(String assignedToId) {
         if (!StringUtils.isBlank(assignedToId)) {
             if (assignedToId.equalsIgnoreCase("-1")) {
-                return userRepository.findByUserDepartment(null);
+                List<User> userList = userRepository.findByUserDepartment(null);
+
+                log.info(">>>>>>>>>> assingedTo is {} and userList {}", assignedToId, userList);
+                return userList;
             }
 
             try {
@@ -316,6 +319,9 @@ public class EmailServiceImpl implements EmailService {
                     log.error("Unable to find assigned to mapping with existing user set");
                     throw new DataUnavailabilityException("Unable to find assigned to mapping with existing user set");
                 }
+
+                log.info(">>>>>>>>>> User details:  user id {}, email {} based on assignedTO {}",
+                        userOptional.get().getId(), userOptional.get().getEmail(), assignedToId);
 
                 return Collections.singletonList(userOptional.get());
             } catch (NumberFormatException e) {

@@ -115,6 +115,7 @@ public class TicketCouncilServiceImpl implements TicketCouncilService {
                     .map(ticketDepartment -> TicketDepartmentDto.builder()
                             .ticketDepartmentId(ticketDepartment.getId())
                             .ticketDepartmentName(ticketDepartment.getTicketDepartmentName())
+                            .status(ticketDepartment.getStatus())
                             .build()
                     ).collect(Collectors.toList());
 
