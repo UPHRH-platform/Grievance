@@ -305,10 +305,14 @@ public class EmailServiceImpl implements EmailService {
     private List<User> getUsersByDepartment(String assignedToId) {
         if (!StringUtils.isBlank(assignedToId)) {
             if (assignedToId.equalsIgnoreCase("-1")) {
-                List<User> userList = userRepository.findByUserDepartment(null);
+                Optional<User> userOptional = userRepository.findByUserDepartment(null);
 
-                log.info(">>>>>>>>>> assingedTo is {} and userList {}", assignedToId, userList);
-                return userList;
+                if (userOptional.isPresent()) {
+                    log.error("Unable to find admin for -1 assignedTo");
+                    throw new DataUnavailabilityException("Unable to find admin user");
+                }
+                log.info(">>>>>>>>>> assingedTo is {} and user {}", assignedToId, userOptional.get());
+                return Collections.singletonList(userOptional.get());
             }
 
             try {

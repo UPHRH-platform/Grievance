@@ -586,6 +586,12 @@ public class SearchServiceImpl implements SearchService {
             case "ticket_department_name":
                 esTicket.setTicketDepartmentName(String.valueOf(entry.getValue()));
                 break;
+            case "reminder_counter":
+                esTicket.setReminderCounter((longValue = ((Number) entry.getValue()).longValue()));
+                break;
+            case "junked_by_name":
+                esTicket.setJunkedByName(String.valueOf(entry.getValue()));
+                break;
         }
     }
 

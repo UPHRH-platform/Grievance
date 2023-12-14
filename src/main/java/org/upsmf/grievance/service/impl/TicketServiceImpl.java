@@ -28,10 +28,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -241,6 +238,12 @@ public class TicketServiceImpl implements TicketService {
             throw new DataUnavailabilityException("Unable to find ticket department");
         }
 
+        Optional<Long> adminIdLong = findGrievanceNodalAdmin(ticketDepartmentOptional.get());
+
+        if (adminIdLong.isPresent()) {
+            return adminIdLong.get();
+        }
+
         List<UserDepartment> userDepartmentList = userDepartmentRepository
                 .findAllByDepartmentIdAndCouncilId(departmentId, councilId);
 
@@ -267,6 +270,25 @@ public class TicketServiceImpl implements TicketService {
         }
 
         return activeUser.get();
+    }
+
+    private Optional<Long> findGrievanceNodalAdmin(@NonNull TicketDepartment ticketDepartment) {
+        if ("Other".equalsIgnoreCase(ticketDepartment.getTicketDepartmentName())) {
+
+            Optional<UserDepartment> userDepartmentOptional = userDepartmentRepository
+                    .findByCouncilNameAndCouncilName("OTHER", "OTHER");
+
+            if (userDepartmentOptional.isPresent()) {
+                Optional<User> userOptional = userRepository
+                        .findByUserDepartment(userDepartmentOptional.get());
+
+                if (userOptional.isPresent()) {
+                    return Optional.ofNullable(userOptional.get().getId());
+                }
+            }
+        }
+
+        return Optional.empty();
     }
 
     /**

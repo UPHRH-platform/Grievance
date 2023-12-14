@@ -18,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.*;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.lang.NonNull;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -252,6 +253,12 @@ public class IntegrationServiceImpl implements IntegrationService {
                     String departmentName = ticketDepartmentService.getDepartmentName(departmentId, councilId);
                     String councilName = ticketCouncilService.getCouncilName(councilId);
 
+//                  Prevent creating multiple grievance nodal admin
+                    if (findGrievanceNodalAdmin(departmentName).isPresent()) {
+                        log.error("User has already been created for other department");
+                        throw new InvalidDataException("User has already been created for other department");
+                    }
+
                     attributeMap.put("departmentId", String.valueOf(departmentId));
                     attributeMap.put("departmentName", departmentName);
                     attributeMap.put("councilId", String.valueOf(councilId));
@@ -261,14 +268,32 @@ public class IntegrationServiceImpl implements IntegrationService {
                 } catch (NumberFormatException e) {
                     log.error("Error while parsing departmetn | council id");
                     throw new InvalidDataException("Department | coucil id only support number");
+                } catch (CustomException e) {
+                    log.error("Error while checking department and council for user");
+                    throw new DataUnavailabilityException(e.getMessage(), "Error while checking department and council for user");
                 } catch (Exception e) {
                     log.error("Error while calculating department and council details");
                     throw new DataUnavailabilityException("Unable to get department | council details");
                 }
             }
         }
-
         return Collections.emptyMap();
+    }
+
+    /**
+     * @param departmentName
+     * @return
+     */
+    private Optional<User> findGrievanceNodalAdmin(@NonNull String departmentName) {
+        if ("OTHER".equalsIgnoreCase(departmentName)) {
+            Optional<UserDepartment> userDepartmentOptional = userDepartmentRepository
+                    .findByCouncilNameAndCouncilName("OTHER", "OTHER");
+
+            if (userDepartmentOptional.isPresent()) {
+                return userRepository.findByUserDepartment(userDepartmentOptional.get());
+            }
+        }
+        return Optional.empty();
     }
 
     private void validateUserPayload(CreateUserDto userDto) {
