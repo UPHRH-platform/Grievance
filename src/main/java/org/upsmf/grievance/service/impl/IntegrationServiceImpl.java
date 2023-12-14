@@ -226,7 +226,7 @@ public class IntegrationServiceImpl implements IntegrationService {
 
 
     /**
-     * @param createUserDto
+     * @param attributeMap
      * @return
      */
     private Map<String, String> processUserDepartmentAndCouncil(Map<String, String> attributeMap) {
@@ -888,5 +888,11 @@ public class IntegrationServiceImpl implements IntegrationService {
             throw new OtpException("Unable to send OTP", ErrorCode.OTP_004, errorMessage.asText());
         }
     }
+
+    public void getUsersByRoles() {
+        List<User> allByRolesInAndStatus = userRepository.findAllByRolesInAndStatus("NODALOFFICER", 1);
+        log.debug("Query result - {}", allByRolesInAndStatus);
+    }
+
 
 }

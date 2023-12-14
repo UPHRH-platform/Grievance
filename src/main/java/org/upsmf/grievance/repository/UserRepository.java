@@ -31,4 +31,6 @@ public interface UserRepository extends PagingAndSortingRepository<User,Long> {
     List<User> findByUserDepartment(Long departmentId);
 
     List<User> findAllByUserDepartmentIn(List<UserDepartment> userDepartmentList);
+
+    List<User> findAllByRolesInAndStatus(String role, int status);
 }

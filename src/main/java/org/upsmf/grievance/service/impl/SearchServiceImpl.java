@@ -9,6 +9,7 @@ import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,8 +22,8 @@ import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Service;
 import org.upsmf.grievance.config.EsConfig;
 import org.upsmf.grievance.constants.Constants;
+import org.upsmf.grievance.dto.SearchDateRange;
 import org.upsmf.grievance.dto.SearchRequest;
-import org.upsmf.grievance.enums.RequesterType;
 import org.upsmf.grievance.enums.TicketPriority;
 import org.upsmf.grievance.enums.TicketStatus;
 import org.upsmf.grievance.model.EmailDetails;
@@ -107,6 +108,8 @@ public class SearchServiceImpl implements SearchService {
         return TicketResponse.builder().count(page.getTotalElements()).data(page.getContent()).build();
     }
 
+
+    // TODO change dashboard logic based on new implementation
     @Override
     public Map<String, Object> dashboardReport(SearchRequest searchRequest) {
         //Create query for search by keyword
@@ -133,42 +136,42 @@ public class SearchServiceImpl implements SearchService {
                     }
                     String cc = String.valueOf(ccList.get(i - 1));
                     if (cc != null && cc.equals(AFFILIATION)) {
-                        getfinalResponse(searchRequest, AFFILIATION);
+                        getFinalResponse(searchRequest, AFFILIATION);
                     } else if (cc != null && cc.equals(EXAM)) {
-                        getfinalResponse(searchRequest, EXAM);
+                        getFinalResponse(searchRequest, EXAM);
                     }/* else if (cc != null && cc.equals(ADMISSION)) {
                         getfinalResponse(searchRequest, ADMISSION);
                     }*/ else if (cc != null && cc.equals(REGISTRATION)) {
-                        getfinalResponse(searchRequest, REGISTRATION);
+                        getFinalResponse(searchRequest, REGISTRATION);
                     } else if (cc != null && cc.equals(ASSESSMENT)) {
-                        getfinalResponse(searchRequest, ASSESSMENT);
+                        getFinalResponse(searchRequest, ASSESSMENT);
                     } else {
                         allDepartment = true;
-                        getfinalResponse(searchRequest, AFFILIATION);
-                        getfinalResponse(searchRequest, EXAM);
+                        getFinalResponse(searchRequest, AFFILIATION);
+                        getFinalResponse(searchRequest, EXAM);
                         //getfinalResponse(searchRequest, ADMISSION);
-                        getfinalResponse(searchRequest, REGISTRATION);
+                        getFinalResponse(searchRequest, REGISTRATION);
                         totalFinalResponse = true;// This flag should be there before last getfinalResponse
-                        getfinalResponse(searchRequest, ASSESSMENT);
+                        getFinalResponse(searchRequest, ASSESSMENT);
                     }
                 }
             } else {
                 allDepartment = true;
-                getfinalResponse(searchRequest, AFFILIATION);
-                getfinalResponse(searchRequest, EXAM);
+                getFinalResponse(searchRequest, AFFILIATION);
+                getFinalResponse(searchRequest, EXAM);
                 //getfinalResponse(searchRequest, ADMISSION);
-                getfinalResponse(searchRequest, REGISTRATION);
+                getFinalResponse(searchRequest, REGISTRATION);
                 totalFinalResponse = true;// This flag should be there before last getfinalResponse
-                getfinalResponse(searchRequest, ASSESSMENT);
+                getFinalResponse(searchRequest, ASSESSMENT);
             }
         } else {
             allDepartment = true;
-            getfinalResponse(searchRequest, AFFILIATION);
-            getfinalResponse(searchRequest, EXAM);
+            getFinalResponse(searchRequest, AFFILIATION);
+            getFinalResponse(searchRequest, EXAM);
             //getfinalResponse(searchRequest, ADMISSION);
-            getfinalResponse(searchRequest, REGISTRATION);
+            getFinalResponse(searchRequest, REGISTRATION);
             totalFinalResponse = true;// This flag should be there before last getfinalResponse
-            getfinalResponse(searchRequest, ASSESSMENT);
+            getFinalResponse(searchRequest, ASSESSMENT);
         }
         return finalResponse;
     }
@@ -231,7 +234,7 @@ public class SearchServiceImpl implements SearchService {
         return searchResponse;
     }
 
-    private void getfinalResponse(SearchRequest searchRequest, String cc) {
+    private void getFinalResponse(SearchRequest searchRequest, String cc) {
         SearchResponse searchJunkResponse = getDashboardSearchResponse(searchRequest, "isJunk", cc, null);
         SearchResponse searchOpenStatusResponse = getDashboardSearchResponse(searchRequest, "openStatus", cc, null);
         SearchResponse searchClosedStatusResponse = getDashboardSearchResponse(searchRequest, "closedStatus", cc, null);
@@ -816,9 +819,39 @@ public class SearchServiceImpl implements SearchService {
     }
 
     /**
-     * Method to get statistical data
+     * Method to get statistical data on below values
+     * "match": {
+     *       "assigned_to_id": 484,
+     *       "create_date": "2023-12-13",
+     *       "status": "OPEN"
+     *     }
      */
-    private void getTicketStatisticsByUser() {
+    public SearchResponse filterTicketByUserAndStatusAndRange(Long assignedUserId, List<String> status, SearchDateRange searchDateRange) {
+        SearchResponse searchResponse;
+        // bool query
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        getCCRangeQuery(String.valueOf(assignedUserId), boolQueryBuilder);
+        // date range query
+        SearchRequest searchRequest = new SearchRequest();
+        searchRequest.setDate(searchDateRange);
+        getDateRangeQuery(searchRequest, boolQueryBuilder);
+        // search by status
+        getStatusQuery(status, boolQueryBuilder);
+        log.debug("Created final query - {}", boolQueryBuilder.toString());
+        // fire query
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
+                .query(createTicketSearchQuery(searchRequest))
+                .sort(SortBuilders.fieldSort("ticket_id").order(SortOrder.DESC));
+
+        org.elasticsearch.action.search.SearchRequest search = new org.elasticsearch.action.search.SearchRequest("ticket");
+        search.searchType(SearchType.QUERY_THEN_FETCH);
+        search.source(searchSourceBuilder);
+        log.info("query string - {}", searchSourceBuilder);
+        try {
+            searchResponse = esConfig.elasticsearchClient().search(search, RequestOptions.DEFAULT);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return searchResponse;
     }
 }

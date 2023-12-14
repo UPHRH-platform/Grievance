@@ -12,6 +12,7 @@ import org.upsmf.grievance.dto.SearchDateRange;
 import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.model.EmailDetails;
 import org.upsmf.grievance.service.EmailService;
+import org.upsmf.grievance.service.IntegrationService;
 import org.upsmf.grievance.service.SearchService;
 
 import java.time.LocalDateTime;
@@ -39,6 +40,9 @@ public class NightlyJobScheduler {
     @Value("${ticket.escalation.days}")
     private String adminEscalationDays;
 
+    @Autowired
+    private IntegrationService integrationService;
+
     @Scheduled(cron = "0 1 0 * * ?")
     public void runNightlyJob(){
         log.info("Starting the Nightly job");
@@ -61,11 +65,27 @@ public class NightlyJobScheduler {
         }
     }
 
-    @Scheduled(cron = "0 0 4 * * ?")
+    /**
+     * scheduler will run at interval of 4 hours
+     */
+    @Scheduled(cron = "0 0 */4 * * ?")
     public void escalateTickets(){
         log.info("Starting the escalation job");
         long lastUpdateTimeBeforeEscalation = LocalDateTime.now().minusDays(Integer.parseInt(adminEscalationDays)).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
         long response = searchService.escalateTickets(lastUpdateTimeBeforeEscalation);
         log.info("No of tickets escalated "+response);
+    }
+
+    /**
+     * scheduler will run at 5 pm every day
+     */
+    @Scheduled(cron = "0 0 17 * * ?")
+    public void newTicketsByUser(){
+        log.info("Starting the ticket aggregator job");
+        // get all Nodal officers
+
+        // loop to get today's assigned tickets for nodal officer
+        // send mail
+        log.info("No of tickets ");
     }
 }
