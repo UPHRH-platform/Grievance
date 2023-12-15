@@ -173,6 +173,8 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("support_email_address","upmedicalfaculty@upsmfac.org");
                     velocityContext.put("support_phone_number","Phone: (0522) 2238846, 2235964, 2235965, 3302100");
                     velocityContext.put("url", feedbackUrl);
+                    velocityContext.put("junk_by", ticket.isJunk());
+                    velocityContext.put("Junk_by_reason", ticket.getJunkByReason());
 
                     // signature
                     createCommonMailSignature(velocityContext);
@@ -207,6 +209,8 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                     velocityContext.put("status", ticket.getStatus().name());
                     velocityContext.put("updated_date", DateUtil.getFormattedDateInString(ticket.getUpdatedDate()));
+                    velocityContext.put("other_by", ticket.getOther());
+                    velocityContext.put("other_by_reason", ticket.getOtherByReason());
                     // signature
                     createCommonMailSignature(velocityContext);
                     // merge mail body

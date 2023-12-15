@@ -50,6 +50,9 @@ public class Ticket {
     @Field(name = "is_junk")
     private Boolean junk = false;
 
+    @Field(name = "is_other")
+    private Boolean other = false;
+
     @Field(name = "junked_by")
     private String junkedBy;
 

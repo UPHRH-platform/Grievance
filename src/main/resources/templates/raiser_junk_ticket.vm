@@ -86,6 +86,10 @@
                                                                                         <p></br></p>
                                                                                         <p>Dear ${first_name},</p>
                                                                                         <p>I hope this message finds you well. We wanted to bring to your attention that your recent grievance ticket: ${id}, has been marked as "junk" due to insufficient information provided. Our goal is to provide you with the best possible assistance, and to ensure a prompt resolution, we kindly request that you raise the ticket again with the necessary details.</p>
+                                                                                        <p>#if (${junk_by})
+                                                                                               <div>Reason to mark junk: <strong>${Junk_by_reason}</strong></div>
+                                                                                           #end
+                                                                                        </p>
 
                                                                                         <p>To help us better understand and address your concern, please provide the following information:<br>
                                                                                         1. Detailed description of the issue or complaint.<br>

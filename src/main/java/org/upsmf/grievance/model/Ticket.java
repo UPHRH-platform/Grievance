@@ -50,6 +50,15 @@ public class Ticket {
     @Column(name = "junked_by")
     private String junkedBy;
 
+    @Column(name = "Junk_by_reason", length = 1000)
+    private String junkByReason;
+
+    @Column(name = "is_other")
+    private Boolean other = false;
+
+    @Column(name = "other_by_reason", length = 1000)
+    private String otherByReason;
+
 //    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss.S", timezone = "Asia/Kolkata")
     @Column(name = "created_date")
     private Timestamp createdDate;

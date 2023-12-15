@@ -200,7 +200,6 @@ public class TicketServiceImpl implements TicketService {
                 .lastName(ticketRequest.getLastName())
                 .phone(ticketRequest.getPhone())
                 .email(ticketRequest.getEmail())
-//                .requesterType(ticketRequest.getUserType()) //TODO: replace with user type
                 .assignedToId(String.valueOf(userId))
                 .description(ticketRequest.getDescription())
                 .updatedDate(currentTimestamp)
@@ -209,7 +208,7 @@ public class TicketServiceImpl implements TicketService {
                 .escalatedDate(Timestamp.valueOf(escalationDateTime))
                 .escalatedTo("-1")
                 .status(TicketStatus.OPEN)
-                .requestType(ticketRequest.getRequestType()) //TODO: userDepartment details
+                .requestType(ticketRequest.getRequestType())
                 .priority(TicketPriority.LOW)
                 .escalatedBy("-1")
                 .reminderCounter(0L)
@@ -238,10 +237,10 @@ public class TicketServiceImpl implements TicketService {
             throw new DataUnavailabilityException("Unable to find ticket department");
         }
 
-        Optional<Long> adminIdLong = findGrievanceNodalAdmin(ticketDepartmentOptional.get());
+        Optional<Long> otherAssingedId = getOhterAssignmentId(ticketDepartmentOptional.get());
 
-        if (adminIdLong.isPresent()) {
-            return adminIdLong.get();
+        if (otherAssingedId.isPresent()) {
+            return otherAssingedId.get();
         }
 
         List<UserDepartment> userDepartmentList = userDepartmentRepository
@@ -270,6 +269,20 @@ public class TicketServiceImpl implements TicketService {
         }
 
         return activeUser.get();
+    }
+
+    /**
+     * It will check if department is other then it'll return back with -1 (assignedTo value)
+     *
+     * @param ticketDepartment
+     * @return
+     */
+    private Optional<Long> getOhterAssignmentId(@NonNull TicketDepartment ticketDepartment) {
+        if ("OTHER".equalsIgnoreCase(ticketDepartment.getTicketDepartmentName())) {
+
+            return Optional.ofNullable(-1L);
+        }
+        return Optional.empty();
     }
 
     private Optional<Long> findGrievanceNodalAdmin(@NonNull TicketDepartment ticketDepartment) {
@@ -331,6 +344,7 @@ public class TicketServiceImpl implements TicketService {
             generateFeedbackLinkAndEmail(ticket);
             return ticket;
         } else if (curentUpdatedTicket.getStatus().name().equalsIgnoreCase(TicketStatus.INVALID.name())) {
+            ticket.setOther(updateTicketRequest.getIsJunk());
             generateFeedbackLinkAndEmailForJunkTicket(ticket);
             return ticket;
         }else if (updateTicketRequest.getIsNudged() != null && updateTicketRequest.getIsNudged()
@@ -339,6 +353,7 @@ public class TicketServiceImpl implements TicketService {
             return ticket;
         } else {
             EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Resolution of Your Grievance - " + curentUpdatedTicket.getTicketId()).recipient(curentUpdatedTicket.getEmail()).build();
+            ticket.setOther(updateTicketRequest.getIsOther());
             emailService.sendUpdateTicketMail(resolutionOfYourGrievance, ticket);
             return ticket;
         }
@@ -406,6 +421,7 @@ public class TicketServiceImpl implements TicketService {
      */
     private void setUpdateTicket(UpdateTicketRequest updateTicketRequest, Ticket ticket) throws Exception {
         // TODO check request role and permission
+
         if(updateTicketRequest.getStatus()!=null) {
             ticket.setStatus(updateTicketRequest.getStatus());
         }
@@ -419,14 +435,22 @@ public class TicketServiceImpl implements TicketService {
         }
 
         if(updateTicketRequest.getCc()!=null && !updateTicketRequest.getCc().isBlank()) {
-
             ticket.setAssignedToId(updateTicketRequest.getCc());
         }
+
         if(updateTicketRequest.getPriority()!=null) {
             ticket.setPriority(updateTicketRequest.getPriority());
         }
+
+        if (Boolean.TRUE.equals(updateTicketRequest.getIsOther())) {
+            ticket.setOther(updateTicketRequest.getIsOther());
+            ticket.setOtherByReason(updateTicketRequest.getOtherByReason());
+        }
+
         if(Boolean.TRUE.equals(updateTicketRequest.getIsJunk())) {
             ticket.setJunk(updateTicketRequest.getIsJunk());
+            ticket.setJunkByReason(updateTicketRequest.getJunkByReason());
+
             if (updateTicketRequest.getRequestedBy() == null || updateTicketRequest.getRequestedBy().isBlank()) {
                 ticket.setJunkedBy("-1");
             } else {
@@ -518,6 +542,7 @@ public class TicketServiceImpl implements TicketService {
                 .assignedToName(assingedToName) // get user details based on ID
                 .description(ticket.getDescription())
                 .junk(ticket.isJunk())
+                .other(ticket.getOther())
                 .junkedBy(ticket.getJunkedBy())
                 .junkedByName(junkByName)
                 .createdDate(ticket.getCreatedDate().toLocalDateTime().format(dateTimeFormatter))
