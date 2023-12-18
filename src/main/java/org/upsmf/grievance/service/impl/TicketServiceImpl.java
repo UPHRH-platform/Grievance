@@ -460,6 +460,8 @@ public class TicketServiceImpl implements TicketService {
                 String junkedBy = firstName + " " + lastName;
                 ticket.setJunkedBy(String.valueOf(user.getId()));
             }
+        } else if (Boolean.FALSE.equals(updateTicketRequest.getIsJunk())) {
+            ticket.setJunk(false);
         }
         ticket.setUpdatedDate(new Timestamp(DateUtil.getCurrentDate().getTime()));
         // update assignee comments
