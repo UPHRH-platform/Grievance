@@ -14,6 +14,7 @@ import org.upsmf.grievance.exception.CustomException;
 import org.upsmf.grievance.exception.UserException;
 import org.upsmf.grievance.model.UserDepartment;
 import org.upsmf.grievance.model.User;
+import org.upsmf.grievance.model.reponse.Response;
 import org.upsmf.grievance.service.IntegrationService;
 import org.upsmf.grievance.util.ErrorCode;
 
@@ -168,6 +169,19 @@ public class UserController {
             return integrationService.login(body);
         } catch (Exception e) {
             throw new RuntimeException(e.getLocalizedMessage());
+        }
+    }
+
+    @GetMapping("/usersByCouncilDetapartment")
+    public ResponseEntity getUsersByCouncilDetapartment(@RequestParam Long departmentId,
+                                                                @RequestParam Long councilId) {
+        try {
+            List<UserResponseDto> userList = integrationService.getUserByCouncilAndDepartment(departmentId, councilId);
+
+            return new ResponseEntity<>(userList, HttpStatus.OK);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Internal error while fetching user details");
         }
     }
 

@@ -85,6 +85,13 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
             throw new DataUnavailabilityException("Unable to find council details");
         }
 
+        if (isDepartmentNameExistInCouncil(ticketDepartmentDto.getTicketDepartmentName(),
+                ticketDepartmentDto.getTicketDepartmentId(), ticketDepartmentDto.getTicketCouncilId())) {
+
+            log.error("Department name is already exist in the same council");
+            throw new InvalidDataException("Department name is already exist in the same council");
+        }
+
         Optional<TicketDepartment> ticketDepartmentOptional = ticketDepartmentRepository
                 .findById(ticketDepartmentDto.getTicketDepartmentId());
 
@@ -109,6 +116,21 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
         } else {
             throw new DataUnavailabilityException("Unable to find department details");
         }
+    }
+
+    private boolean isDepartmentNameExistInCouncil(@NonNull String departmentName, @NonNull Long departmentId,
+                                              @NonNull Long councilId) {
+
+        Optional<TicketDepartment> ticketDepartmentOptional = ticketDepartmentRepository
+                .findByIdAndTicketCouncilId(departmentId, councilId);
+
+        if (ticketDepartmentOptional.isPresent()) {
+            if (departmentName.equalsIgnoreCase(ticketDepartmentOptional.get().getTicketDepartmentName())){
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Override

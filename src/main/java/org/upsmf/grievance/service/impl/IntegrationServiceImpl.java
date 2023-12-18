@@ -46,6 +46,7 @@ import org.upsmf.grievance.util.ErrorCode;
 
 import javax.transaction.Transactional;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -588,6 +589,38 @@ public class IntegrationServiceImpl implements IntegrationService {
         ArrayNode nodes = mapper.valueToTree(childNodes);
         ((ObjectNode) userResponse).put("result", nodes);
         return ResponseEntity.ok(mapper.writeValueAsString(userResponse));
+    }
+
+    @Override
+    public List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId) {
+        List<UserResponseDto> userResponseDtoList = new ArrayList<>();
+
+        try {
+            boolean validDepartment = ticketDepartmentService.validateDepartmentInCouncil(departmentId, councilId);
+
+            if (!validDepartment) {
+                log.error("Failed to validate department id and council id");
+                throw new InvalidDataException("Failed to validate department and coucil id mapping");
+            }
+
+            List<UserDepartment> userDepartmentList = userDepartmentRepository
+                    .findAllByDepartmentIdAndCouncilId(departmentId, councilId);
+
+            if (userDepartmentList != null && !userDepartmentList.isEmpty()) {
+                List<User> userList = userRepository.findAllByUserDepartmentIn(userDepartmentList);
+
+                if (userList != null && !userList.isEmpty()) {
+                    userResponseDtoList = userList.stream()
+                            .map(user -> createUserResponse(user))
+                            .collect(Collectors.toList());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error while fetching user list based on department id and council id", e);
+            throw new DataUnavailabilityException("Unable to get user detils");
+        }
+
+        return userResponseDtoList;
     }
 
     @Override

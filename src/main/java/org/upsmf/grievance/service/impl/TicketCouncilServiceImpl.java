@@ -63,7 +63,7 @@ public class TicketCouncilServiceImpl implements TicketCouncilService {
         }
 
         Optional<TicketCouncil> ticketCouncilNameOptional = ticketCouncilRepository
-                .findByTicketCouncilName(ticketCouncilDto.getTicketCouncilName());
+                .findByTicketCouncilName(StringUtils.upperCase(ticketCouncilDto.getTicketCouncilName()));
 
         if (ticketCouncilNameOptional.isPresent()) {
             log.error("Ticket council name is already exist");

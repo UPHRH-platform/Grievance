@@ -9,6 +9,8 @@ import org.upsmf.grievance.dto.UserResponseDto;
 import org.upsmf.grievance.model.OtpRequest;
 import org.upsmf.grievance.model.User;
 
+import java.util.List;
+
 public interface IntegrationService {
 
     User addUser(User user);
@@ -33,4 +35,6 @@ public interface IntegrationService {
     ResponseEntity<String> login(JsonNode body);
 
     Boolean sendMobileOTP(String name, String phoneNumber, String otp);
+
+    List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId);
 }
