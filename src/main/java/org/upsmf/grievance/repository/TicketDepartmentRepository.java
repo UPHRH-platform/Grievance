@@ -16,4 +16,6 @@ public interface TicketDepartmentRepository extends JpaRepository<TicketDepartme
 
     Optional<TicketDepartment> findByIdAndTicketCouncilId(Long id, Long councilId);
 
+    List<TicketDepartment> findByTicketCouncilIdAndTicketDepartmentName(Long councilId, String departmentName);
+
 }

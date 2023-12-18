@@ -53,6 +53,13 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
             throw new DataUnavailabilityException("Unable to find council details");
         }
 
+        if (isDepartmentNameExistInCouncil(ticketDepartmentDto.getTicketDepartmentName(),
+                ticketDepartmentDto.getTicketCouncilId())) {
+
+            log.error("Department name is already exist in the same council");
+            throw new InvalidDataException("Department name is already exist in the same council");
+        }
+
         TicketDepartment ticketDepartment = TicketDepartment.builder()
                 .ticketCouncilId(ticketDepartmentDto.getTicketCouncilId())
                 .ticketDepartmentName(StringUtils.upperCase(ticketDepartmentDto.getTicketDepartmentName()))
@@ -86,7 +93,7 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
         }
 
         if (isDepartmentNameExistInCouncil(ticketDepartmentDto.getTicketDepartmentName(),
-                ticketDepartmentDto.getTicketDepartmentId(), ticketDepartmentDto.getTicketCouncilId())) {
+                ticketDepartmentDto.getTicketCouncilId())) {
 
             log.error("Department name is already exist in the same council");
             throw new InvalidDataException("Department name is already exist in the same council");
@@ -118,16 +125,13 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
         }
     }
 
-    private boolean isDepartmentNameExistInCouncil(@NonNull String departmentName, @NonNull Long departmentId,
-                                              @NonNull Long councilId) {
+    private boolean isDepartmentNameExistInCouncil(@NonNull String departmentName, @NonNull Long councilId) {
 
-        Optional<TicketDepartment> ticketDepartmentOptional = ticketDepartmentRepository
-                .findByIdAndTicketCouncilId(departmentId, councilId);
+        List<TicketDepartment> ticketDepartmentList = ticketDepartmentRepository
+                .findByTicketCouncilIdAndTicketDepartmentName(councilId, StringUtils.upperCase(departmentName));
 
-        if (ticketDepartmentOptional.isPresent()) {
-            if (departmentName.equalsIgnoreCase(ticketDepartmentOptional.get().getTicketDepartmentName())){
-                return true;
-            }
+        if (ticketDepartmentList != null && !ticketDepartmentList.isEmpty()) {
+            return true;
         }
 
         return false;
