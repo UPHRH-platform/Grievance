@@ -239,7 +239,8 @@ public class IntegrationServiceImpl implements IntegrationService {
                 throw new InvalidDataException("Both council and department id are allowed or none");
             }
 
-            if (attributeMap.containsKey("departmentId") && attributeMap.containsKey("councilId")) {
+            if (attributeMap.containsKey("departmentId") && attributeMap.containsKey("councilId")
+                    && attributeMap.get("departmentId") != null && attributeMap.get("councilId") != null) {
                 try {
                     Long departmentId = Long.valueOf(attributeMap.get("departmentId"));
                     Long councilId = Long.valueOf(attributeMap.get("councilId"));
@@ -558,7 +559,7 @@ public class IntegrationServiceImpl implements IntegrationService {
                     log.error("Error while parsing department | council id");
                     throw new InvalidDataException("Department | coucil id only support number");
                 } catch (Exception e) {
-                    log.error("Error while calculating department and council details");
+                    log.error("Error while calculating department and council details", e);
                     throw new DataUnavailabilityException("Unable to get department | council details");
                 }
             }

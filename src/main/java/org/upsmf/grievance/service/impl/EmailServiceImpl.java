@@ -406,13 +406,33 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    private List<User> findGrivanceNodal() {
+        Optional<UserDepartment> userDepartmentOptional = userDepartmentRepository
+                .findByCouncilNameAndCouncilName("OTHER", "OTHER");
+
+        if (userDepartmentOptional.isPresent()) {
+            Optional<User> userOptional = userRepository.findByUserDepartment(userDepartmentOptional.get());
+
+            if (userOptional.isPresent()) {
+                return Collections.singletonList(userOptional.get());
+            } else {
+                log.error(">>>>>>>>>>>>>>>>>>>>> Unable to find Grivance Nodal");
+            }
+        } else {
+            log.error(">>>>>>>>>>>>>>>>>>>>> Unable to find user department for OTHER concil and OTHER department");
+        }
+
+        return Collections.emptyList();
+    }
+
     /** ununsed method
      * @param details
      * @param ticket
      */
-    private void sendMailToGrievanceNodal(EmailDetails details, Ticket ticket) {
+    @Override
+    public void sendMailToGrievanceNodal(EmailDetails details, Ticket ticket) {
         try {
-            List<User> users = getUsersByDepartment(String.valueOf(-1));
+            List<User> users = findGrivanceNodal();
             if(users == null || users.isEmpty()) {
                 return;
             }
@@ -428,8 +448,11 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("id", ticket.getId());
                         velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                         velocityContext.put("priority", ticket.getPriority());
+                        velocityContext.put("updated_date", DateUtil.getFormattedDateInString(ticket.getUpdatedDate()));
 //                        velocityContext.put("userDepartment", departmentList != null && !departmentList.isEmpty() ? departmentList.get(0).getCode() : "Others");
                         velocityContext.put("status", ticket.getStatus().name());
+                        velocityContext.put("other_by", ticket.getOther());
+                        velocityContext.put("other_by_reason", ticket.getOtherByReason());
                         // signature
                         createCommonMailSignature(velocityContext);
                         // merge mail body

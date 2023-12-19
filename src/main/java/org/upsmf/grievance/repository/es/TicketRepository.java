@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.upsmf.grievance.model.es.Ticket;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +14,6 @@ public interface TicketRepository extends ElasticsearchRepository<Ticket, String
     @Query("{'ticket_id': ?0}")
     Optional<Ticket> findOneByTicketId(long id);
 
-    List<Ticket> findAllByTicketIdIn(List<Long> ticketIdList);
+    List<Ticket> findByTicketIdIn(Collection<Long> ticketIdList);
 
 }

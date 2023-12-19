@@ -1,5 +1,6 @@
 package org.upsmf.grievance.service.impl;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -18,6 +19,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
 
     @Autowired
@@ -36,78 +38,88 @@ public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
 //    @Async
     @Override
     public void updateEsTicketByUserId(UpdateUserDto updateUserDto) {
-        if (updateUserDto != null && updateUserDto.getId() != null
-                && !StringUtils.isBlank(updateUserDto.getFirstName()) && !StringUtils.isBlank(updateUserDto.getLastName())) {
-            List<Ticket> ticketList = ticketRepository.findAllByAssignedToId(String.valueOf(updateUserDto.getId()));
+        try {
+            if (updateUserDto != null && updateUserDto.getId() != null
+                    && !StringUtils.isBlank(updateUserDto.getFirstName()) && !StringUtils.isBlank(updateUserDto.getLastName())) {
+                List<Ticket> ticketList = ticketRepository.findAllByAssignedToId(String.valueOf(updateUserDto.getId()));
 
-            Optional<User> userOptional = userRepository.findById(updateUserDto.getId());
-            if (userOptional.isPresent()) {
-                UserDepartment userDepartment = userOptional.get().getUserDepartment();
+                Optional<User> userOptional = userRepository.findById(updateUserDto.getId());
+                if (userOptional.isPresent()) {
+                    UserDepartment userDepartment = userOptional.get().getUserDepartment();
 
-                if (userDepartment != null && "OTHER".equalsIgnoreCase(userDepartment.getDepartmentName())
-                        && "OTHER".equalsIgnoreCase(userDepartment.getCouncilName())) {
+                    if (userDepartment != null && "OTHER".equalsIgnoreCase(userDepartment.getDepartmentName())
+                            && "OTHER".equalsIgnoreCase(userDepartment.getCouncilName())) {
 
-                    ticketList = ticketRepository.findAllByJunkedBy("-1");
-                }
+                        ticketList = ticketRepository.findAllByJunkedBy("-1");
+                    }
 
-                if (ticketList != null && !ticketList.isEmpty()) {
-                    List<Long> ids = ticketList.stream().map(Ticket::getId).collect(Collectors.toList());
+                    if (ticketList != null && !ticketList.isEmpty()) {
+                        List<Long> ids = ticketList.stream().map(Ticket::getId).collect(Collectors.toList());
 
-                    List<org.upsmf.grievance.model.es.Ticket> esTicketList = esTicketRepository.findAllByTicketIdIn(ids);
+                        log.info(">>>>>>>>>>>>>>>>>>>>>>>>>> assignedTo id list: " + ids);
 
-                    if (esTicketList != null && !esTicketList.isEmpty()) {
-                        for (org.upsmf.grievance.model.es.Ticket ticket : esTicketList) {
-                            String updatedName = updateUserDto.getFirstName() + " " + updateUserDto.getLastName();
-                            ticket.setAssignedToName(updatedName);
+                        List<org.upsmf.grievance.model.es.Ticket> esTicketList = esTicketRepository.findByTicketIdIn(ids);
 
-                            if (!StringUtils.isBlank(ticket.getJunkedBy())) {
-                                ticket.setJunkedBy(updatedName);
+                        if (esTicketList != null && !esTicketList.isEmpty()) {
+                            for (org.upsmf.grievance.model.es.Ticket ticket : esTicketList) {
+                                String updatedName = updateUserDto.getFirstName() + " " + updateUserDto.getLastName();
+                                ticket.setAssignedToName(updatedName);
+
+                                if (!StringUtils.isBlank(ticket.getJunkedBy())) {
+                                    ticket.setJunkedBy(updatedName);
+                                }
                             }
-                        }
 
-                        esTicketRepository.saveAll(esTicketList);
+                            esTicketRepository.saveAll(esTicketList);
+                        }
                     }
                 }
             }
+        } catch (Exception e) {
+            log.error("Error while updating assignedTo ticket info for profile update");
+            e.printStackTrace();
         }
     }
 
     @Override
     public void updateJunkByEsTicketByUserId(UpdateUserDto updateUserDto) {
-        if (updateUserDto != null && updateUserDto.getId() != null
-                && !StringUtils.isBlank(updateUserDto.getFirstName()) && !StringUtils.isBlank(updateUserDto.getLastName())) {
+        try {
+            if (updateUserDto != null && updateUserDto.getId() != null
+                    && !StringUtils.isBlank(updateUserDto.getFirstName()) && !StringUtils.isBlank(updateUserDto.getLastName())) {
 
-            List<Ticket> ticketList = ticketRepository.findAllByJunkedBy(String.valueOf(updateUserDto.getId()));
+                List<Ticket> ticketList = ticketRepository.findAllByJunkedBy(String.valueOf(updateUserDto.getId()));
 
-            Optional<User> userOptional = userRepository.findById(updateUserDto.getId());
-            if (userOptional.isPresent()) {
-                UserDepartment userDepartment = userOptional.get().getUserDepartment();
+                Optional<User> userOptional = userRepository.findById(updateUserDto.getId());
+                if (userOptional.isPresent()) {
+                    UserDepartment userDepartment = userOptional.get().getUserDepartment();
 
-                if (userDepartment != null && "OTHER".equalsIgnoreCase(userDepartment.getDepartmentName())
-                        && "OTHER".equalsIgnoreCase(userDepartment.getCouncilName())) {
+                    if (userDepartment != null && "OTHER".equalsIgnoreCase(userDepartment.getDepartmentName())
+                            && "OTHER".equalsIgnoreCase(userDepartment.getCouncilName())) {
 
-                    ticketList = ticketRepository.findAllByJunkedBy("-1");
-                }
+                        ticketList = ticketRepository.findAllByJunkedBy("-1");
+                    }
 
-                if (ticketList != null && !ticketList.isEmpty()) {
-                    List<Long> ids = ticketList.stream().map(Ticket::getId).collect(Collectors.toList());
+                    if (ticketList != null && !ticketList.isEmpty()) {
+                        List<Long> ids = ticketList.stream().map(Ticket::getId).collect(Collectors.toList());
 
-                    List<org.upsmf.grievance.model.es.Ticket> esTicketList = esTicketRepository.findAllByTicketIdIn(ids);
+                        log.info(">>>>>>>>>>>>>>>>>>>>>>>>>> junked id list: " + ids);
 
-                    if (esTicketList != null && !esTicketList.isEmpty()) {
-                        for (org.upsmf.grievance.model.es.Ticket ticket : esTicketList) {
-                            String updatedName = updateUserDto.getFirstName() + " " + updateUserDto.getLastName();
-                            ticket.setJunkedByName(updatedName);
+                        List<org.upsmf.grievance.model.es.Ticket> esTicketList = esTicketRepository.findByTicketIdIn(ids);
+
+                        if (esTicketList != null && !esTicketList.isEmpty()) {
+                            for (org.upsmf.grievance.model.es.Ticket ticket : esTicketList) {
+                                String updatedName = updateUserDto.getFirstName() + " " + updateUserDto.getLastName();
+                                ticket.setJunkedByName(updatedName);
+                            }
+
+                            esTicketRepository.saveAll(esTicketList);
                         }
-
-                        esTicketRepository.saveAll(esTicketList);
                     }
                 }
             }
-
-//            List<Ticket> ticketList = ticketRepository.findAllByJunkedBy(String.valueOf(updateUserDto.getId()));
-
-
+        }catch (Exception e) {
+            log.error("Error while updating junked by ticket info for profile update");
+            e.printStackTrace();
         }
     }
 }

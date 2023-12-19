@@ -344,7 +344,7 @@ public class TicketServiceImpl implements TicketService {
             generateFeedbackLinkAndEmail(ticket);
             return ticket;
         } else if (curentUpdatedTicket.getStatus().name().equalsIgnoreCase(TicketStatus.INVALID.name())) {
-            ticket.setOther(updateTicketRequest.getIsJunk());
+            ticket.setJunk(updateTicketRequest.getIsJunk());
             generateFeedbackLinkAndEmailForJunkTicket(ticket);
             return ticket;
         }else if (updateTicketRequest.getIsNudged() != null && updateTicketRequest.getIsNudged()
@@ -354,6 +354,11 @@ public class TicketServiceImpl implements TicketService {
         } else {
             EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Resolution of Your Grievance - " + curentUpdatedTicket.getTicketId()).recipient(curentUpdatedTicket.getEmail()).build();
             ticket.setOther(updateTicketRequest.getIsOther());
+
+            if (ticket.getAssignedToId() != null && ticket.getAssignedToId().equalsIgnoreCase("-1")) {
+                emailService.sendMailToGrievanceNodal(resolutionOfYourGrievance, ticket);
+            }
+
             emailService.sendUpdateTicketMail(resolutionOfYourGrievance, ticket);
             return ticket;
         }

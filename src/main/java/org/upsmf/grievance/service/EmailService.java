@@ -28,4 +28,6 @@ public interface EmailService {
     public void sendMailToNodalOfficers(EmailDetails details, Ticket ticket);
 
     void sendMailToRaiserForEscalatedTicket(EmailDetails details, Ticket ticket);
+
+    void sendMailToGrievanceNodal(EmailDetails details, Ticket ticket);
 }
