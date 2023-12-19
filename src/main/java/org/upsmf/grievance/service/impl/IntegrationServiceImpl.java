@@ -487,6 +487,7 @@ public class IntegrationServiceImpl implements IntegrationService {
 
             return ResponseEntity.ok().body("User updated successful");
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException(e.getLocalizedMessage());
         }
     }
