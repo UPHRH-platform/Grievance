@@ -16,6 +16,7 @@ public interface TicketCouncilRepository extends PagingAndSortingRepository<Tick
 
     Optional<TicketCouncil> findByTicketCouncilName(String ticketCouncilName);
 
-    @Query("SELECT c FROM TicketCouncil c WHERE LOWER(c.ticketCouncilName) LIKE LOWER(CONCAT('%', ?1,'%'))")
-    List<TicketCouncil> freeTextSearchByName(String councilName, Pageable pageable);
+    @Query("SELECT c FROM TicketCouncil c WHERE LOWER(c.ticketCouncilName) LIKE LOWER(CONCAT('%', ?1,'%')) " +
+            "ORDER BY c.ticketCouncilName ASC")
+    List<TicketCouncil> freeTextSearchByName(String councilName);
 }

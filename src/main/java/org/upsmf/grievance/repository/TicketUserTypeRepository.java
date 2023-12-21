@@ -16,6 +16,7 @@ public interface TicketUserTypeRepository extends PagingAndSortingRepository<Tic
 
     Optional<TicketUserType> findByUserTypeName(String userTypeName);
 
-    @Query("SELECT ut FROM TicketUserType ut WHERE LOWER(ut.userTypeName) LIKE LOWER(CONCAT('%', ?1,'%'))")
-    List<TicketUserType> freeTextSearchByName(String userTypeName, Pageable pageable);
+    @Query("SELECT ut FROM TicketUserType ut WHERE LOWER(ut.userTypeName) LIKE LOWER(CONCAT('%', ?1,'%'))" +
+            "ORDER BY ut.userTypeName ASC")
+    List<TicketUserType> freeTextSearchByName(String userTypeName);
 }

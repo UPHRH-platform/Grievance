@@ -130,6 +130,9 @@ public class TicketUserTypeServiceImpl implements TicketUserTypeService {
                             .userTypeName(ticketUserType.getUserTypeName())
                             .status(ticketUserType.getStatus())
                             .build())
+                    .sorted(((userType1, userType2) ->
+                            userType1.getUserTypeName()
+                                    .compareToIgnoreCase(userType2.getUserTypeName())))
                     .collect(Collectors.toList());
         }
         return Collections.emptyList();
@@ -137,14 +140,10 @@ public class TicketUserTypeServiceImpl implements TicketUserTypeService {
 
     @Override
     public List<TicketUserTypeDto> freeTextSearchByName(AdminTextSearchDto adminTextSearchDto) {
-        if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())
-                && adminTextSearchDto.getPage() != null && adminTextSearchDto.getSize() != null) {
-
-            Pageable pageable = PageRequest.of(adminTextSearchDto.getPage(), adminTextSearchDto.getSize(),
-                    Sort.by(Sort.Direction.DESC, "id"));
+        if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())) {
 
             List<TicketUserType> ticketUserTypeList = ticketUserTypeRepository
-                    .freeTextSearchByName(adminTextSearchDto.getSearchKeyword(), pageable);
+                    .freeTextSearchByName(adminTextSearchDto.getSearchKeyword());
 
             if (ticketUserTypeList != null && !ticketUserTypeList.isEmpty()) {
 

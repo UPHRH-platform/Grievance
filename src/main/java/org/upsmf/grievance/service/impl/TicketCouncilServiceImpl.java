@@ -106,6 +106,9 @@ public class TicketCouncilServiceImpl implements TicketCouncilService {
         if (!ticketCouncilList.isEmpty()) {
             return ticketCouncilList.stream()
                     .map(this::convertTicketCouncilEntityToDto)
+                    .sorted(((council1, council2) ->
+                            council1.getTicketCouncilName()
+                                    .compareToIgnoreCase(council2.getTicketCouncilName())))
                     .collect(Collectors.toList());
         }
 
@@ -113,14 +116,10 @@ public class TicketCouncilServiceImpl implements TicketCouncilService {
     }
 
     public List<TicketCouncilDto> freeTextSearchByName(AdminTextSearchDto adminTextSearchDto) {
-        if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())
-                && adminTextSearchDto.getPage() != null && adminTextSearchDto.getSize() != null) {
-
-            Pageable pageable = PageRequest.of(adminTextSearchDto.getPage(), adminTextSearchDto.getSize(),
-                    Sort.by(Sort.Direction.DESC, "id"));
+        if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())) {
 
             List<TicketCouncil> ticketCouncilList = ticketCouncilRepository
-                    .freeTextSearchByName(adminTextSearchDto.getSearchKeyword(), pageable);
+                    .freeTextSearchByName(adminTextSearchDto.getSearchKeyword());
 
             if (ticketCouncilList != null && !ticketCouncilList.isEmpty()) {
 

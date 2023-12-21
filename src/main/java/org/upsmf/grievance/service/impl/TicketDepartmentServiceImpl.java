@@ -161,6 +161,9 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
                             .ticketCouncilName(getCouncilName(ticketDepartment.getTicketCouncilId()))
                             .status(ticketDepartment.getStatus())
                             .build())
+                    .sorted(((ticketDepartment1, ticketDepartment2) ->
+                            ticketDepartment1.getTicketDepartmentName()
+                                    .compareToIgnoreCase(ticketDepartment2.getTicketDepartmentName())))
                     .collect(Collectors.toList());
         }
         return Collections.emptyList();
@@ -169,15 +172,11 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
     @Override
     public List<TicketDepartmentDto> freeTextSearchByName(AdminTextSearchDto adminTextSearchDto) {
         if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())
-                && adminTextSearchDto.getPage() != null && adminTextSearchDto.getSize() != null
                 && adminTextSearchDto.getCouncilId() != null) {
-
-            Pageable pageable = PageRequest.of(adminTextSearchDto.getPage(), adminTextSearchDto.getSize(),
-                    Sort.by(Sort.Direction.DESC, "id"));
 
             List<TicketDepartment> ticketDepartmentList = ticketDepartmentRepository
                     .freeTextSearchByNameAndCouncilId(adminTextSearchDto.getSearchKeyword(),
-                            adminTextSearchDto.getCouncilId(), pageable);
+                            adminTextSearchDto.getCouncilId());
 
             if (ticketDepartmentList != null && !ticketDepartmentList.isEmpty()) {
 

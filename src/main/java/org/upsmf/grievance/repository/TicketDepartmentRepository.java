@@ -24,9 +24,10 @@ public interface TicketDepartmentRepository extends PagingAndSortingRepository<T
     List<TicketDepartment> findByTicketCouncilIdAndTicketDepartmentName(Long councilId, String departmentName);
 
     @Query("SELECT d FROM TicketDepartment d WHERE d.ticketCouncilId =:councilId " +
-            "AND LOWER(d.ticketDepartmentName) LIKE LOWER(CONCAT('%', :departmentName,'%'))")
+            "AND LOWER(d.ticketDepartmentName) LIKE LOWER(CONCAT('%', :departmentName,'%'))" +
+            "ORDER BY d.ticketDepartmentName ASC")
     List<TicketDepartment> freeTextSearchByNameAndCouncilId(@Param("departmentName") String departmentName,
-                                                            @Param("councilId") Long councilId, Pageable pageable);
+                                                            @Param("councilId") Long councilId);
 
     @Query("SELECT d FROM TicketDepartment d WHERE LOWER(d.ticketDepartmentName) LIKE LOWER(CONCAT('%', ?1,'%'))")
     List<TicketDepartment> freeTextSearchByName(String departmentName, Pageable pageable);
