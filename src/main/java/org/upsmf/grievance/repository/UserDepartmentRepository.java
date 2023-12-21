@@ -17,6 +17,7 @@ public interface UserDepartmentRepository extends JpaRepository<UserDepartment, 
     List<UserDepartment> findAllByDepartmentName(String departmentName);
 
     List<UserDepartment> findAllByDepartmentId(Long departmentId);
+    List<UserDepartment> findAllByCouncilId(Long councilId);
 
     List<UserDepartment> findAllByDepartmentIdAndCouncilId(Long departmentId, Long councilId);
 

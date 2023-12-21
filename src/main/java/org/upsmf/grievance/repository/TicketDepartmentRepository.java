@@ -32,4 +32,6 @@ public interface TicketDepartmentRepository extends PagingAndSortingRepository<T
     @Query("SELECT d FROM TicketDepartment d WHERE LOWER(d.ticketDepartmentName) LIKE LOWER(CONCAT('%', ?1,'%'))")
     List<TicketDepartment> freeTextSearchByName(String departmentName, Pageable pageable);
 
+    @Query("SELECT d FROM TicketDepartment d WHERE d.id IN :ids")
+    List<TicketDepartment> findAllById(List<Long> ids);
 }

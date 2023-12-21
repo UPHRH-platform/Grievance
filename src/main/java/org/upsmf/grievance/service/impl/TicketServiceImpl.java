@@ -193,6 +193,7 @@ public class TicketServiceImpl implements TicketService {
 
         Long userId = getFirstActiveUserByDepartmentId(ticketRequest.getTicketDepartmentId(), ticketRequest.getTicketCouncilId());
 
+        Optional<User> userOptional = userRepository.findById(userId);
 
         return Ticket.builder()
                 .createdDate(new Timestamp(DateUtil.getCurrentDate().getTime()))
@@ -215,6 +216,7 @@ public class TicketServiceImpl implements TicketService {
                 .ticketUserType(userTypeOptional.get())
                 .ticketCouncil(ticketCouncilOptional.get())
                 .ticketDepartment(ticketDepartmentOptional.get())
+                .ownerEmail(userOptional.isPresent() ? userOptional.get().getEmail() : null)
                 .build();
     }
 

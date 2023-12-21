@@ -16,11 +16,11 @@ import org.upsmf.grievance.dto.TicketUserTypeDto;
 import org.upsmf.grievance.exception.CustomException;
 import org.upsmf.grievance.exception.DataUnavailabilityException;
 import org.upsmf.grievance.exception.InvalidDataException;
-import org.upsmf.grievance.model.TicketCouncil;
-import org.upsmf.grievance.model.TicketDepartment;
-import org.upsmf.grievance.model.TicketUserType;
+import org.upsmf.grievance.model.*;
 import org.upsmf.grievance.repository.TicketCouncilRepository;
 import org.upsmf.grievance.repository.TicketDepartmentRepository;
+import org.upsmf.grievance.repository.UserDepartmentRepository;
+import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.service.TicketDepartmentService;
 
 import java.util.ArrayList;
@@ -38,6 +38,12 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
 
     @Autowired
     private TicketCouncilRepository ticketCouncilRepository;
+
+    @Autowired
+    private UserDepartmentRepository userDepartmentRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     /**
      * @param ticketDepartmentDto
@@ -262,5 +268,49 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
         }
 
         return false;
+    }
+
+    /**
+     * @param councilId
+     * @return
+     */
+    public List<TicketDepartmentDto> getAssignedDepartment(Long councilId) {
+        if (councilId != null) {
+            List<UserDepartment> userDepartmentList = userDepartmentRepository.findAllByCouncilId(councilId);
+
+            if (userDepartmentList == null || userDepartmentList.isEmpty()) {
+                log.warn(">>>>>>>>>>>>> Unable to find User Department for given council Id {}", councilId);
+                return Collections.emptyList();
+            }
+
+            List<User> userList = userRepository.findAllByUserDepartmentIn(userDepartmentList);
+
+            if (userList == null || userList.isEmpty()) {
+                log.warn(">>>>>>>>>>>>> Unable to find User in user department {}", userDepartmentList);
+                return Collections.emptyList();
+            }
+
+            List<Long> departmentIds = userList.stream()
+                    .filter(user -> user.getStatus() == 1)
+                    .filter(user -> user.getUserDepartment() != null)
+                    .map(user -> user.getUserDepartment().getDepartmentId())
+                    .collect(Collectors.toList());
+
+            if (departmentIds != null && !departmentIds.isEmpty()) {
+                List<TicketDepartment> ticketDepartmentList = ticketDepartmentRepository.findAllById(departmentIds);
+
+                if (ticketDepartmentList != null && !ticketDepartmentList.isEmpty()) {
+                    return ticketDepartmentList.stream()
+                            .filter(ticketDepartment -> Boolean.TRUE.equals(ticketDepartment.getStatus()))
+                            .map(ticketDepartment -> TicketDepartmentDto.builder()
+                                    .ticketDepartmentName(ticketDepartment.getTicketDepartmentName())
+                                    .ticketDepartmentId(ticketDepartment.getId())
+                                    .status(ticketDepartment.getStatus())
+                                    .build())
+                            .collect(Collectors.toList());
+                }
+            }
+        }
+        return Collections.emptyList();
     }
 }

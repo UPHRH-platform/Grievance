@@ -38,6 +38,9 @@ public class Ticket {
     @Column(name = "requester_email")
     private String email;
 
+    @Column(name = "owner_email")
+    private String ownerEmail;
+
     @Column(name = "assigned_to_id")
     private String assignedToId;
 

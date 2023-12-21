@@ -322,4 +322,19 @@ public class AdminController {
         Response response = new Response(HttpStatus.OK.value(), "Ticket department activation status has been updated successfully");
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
+
+    @GetMapping("/ticket/department/getAssignedDepartment")
+    public ResponseEntity getUsersByCouncilDetapartment(@RequestParam Long councilId) {
+        try {
+            List<TicketDepartmentDto> ticketDepartmentDtoList = ticketDepartmentService.getAssignedDepartment(councilId);
+
+            return new ResponseEntity<>(ticketDepartmentDtoList, HttpStatus.OK);
+        } catch (CustomException e) {
+            log.error("Error in while getting assigned department");
+            throw new TicketException(e.getMessage(), ErrorCode.TKT_001, "Error in while getting assigned department");
+        } catch (Exception e) {
+            log.error("Error in while getting assigned department", e);
+            throw new TicketException("Error in while getting assigned department", ErrorCode.TKT_002, e.getMessage());
+        }
+    }
 }

@@ -21,4 +21,6 @@ public interface TicketDepartmentService {
     boolean validateDepartmentInCouncil(Long departmentId, Long councilId);
 
     List<TicketDepartmentDto> freeTextSearchByName(AdminTextSearchDto adminTextSearchDto);
+
+    List<TicketDepartmentDto> getAssignedDepartment(Long councilId);
 }
