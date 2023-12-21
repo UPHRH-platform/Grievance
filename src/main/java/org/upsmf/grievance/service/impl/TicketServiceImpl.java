@@ -261,6 +261,7 @@ public class TicketServiceImpl implements TicketService {
         Optional<Long> activeUser = userList.stream()
                 .filter(user -> user.getStatus() == 1)
                 .map(User::getId)
+                .skip(new Random().nextInt(userList.size()))
                 .findFirst();
 
         if (!activeUser.isPresent()) {

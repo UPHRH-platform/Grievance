@@ -3,16 +3,23 @@ package org.upsmf.grievance.service.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.upsmf.grievance.dto.AdminTextSearchDto;
 import org.upsmf.grievance.dto.TicketUserTypeDto;
 import org.upsmf.grievance.exception.CustomException;
 import org.upsmf.grievance.exception.DataUnavailabilityException;
 import org.upsmf.grievance.exception.InvalidDataException;
 import org.upsmf.grievance.model.TicketCouncil;
 import org.upsmf.grievance.model.TicketUserType;
+import org.upsmf.grievance.model.User;
 import org.upsmf.grievance.repository.TicketUserTypeRepository;
 import org.upsmf.grievance.service.TicketUserTypeService;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -111,21 +118,47 @@ public class TicketUserTypeServiceImpl implements TicketUserTypeService {
      */
     @Override
     public List<TicketUserTypeDto> findAllUserType() {
-        List<TicketUserType> ticketUserTypeList = ticketUserTypeRepository.findAll();
+        List<TicketUserType> ticketUserTypeList = new ArrayList<>();
 
-        if (ticketUserTypeList != null && !ticketUserTypeList.isEmpty()) {
+        Iterable<TicketUserType> ticketUserTypeIterable = ticketUserTypeRepository.findAll();
+        ticketUserTypeIterable.forEach(ticketUserTypeList::add);
 
-            List<TicketUserTypeDto> ticketUserTypeDtoList = ticketUserTypeList.stream()
+        if (!ticketUserTypeList.isEmpty()) {
+            return ticketUserTypeList.stream()
                     .map(ticketUserType -> TicketUserTypeDto.builder()
                             .userTypeId(ticketUserType.getId())
                             .userTypeName(ticketUserType.getUserTypeName())
                             .status(ticketUserType.getStatus())
                             .build())
                     .collect(Collectors.toList());
-
-            return ticketUserTypeDtoList;
         }
+        return Collections.emptyList();
+    }
 
+    @Override
+    public List<TicketUserTypeDto> freeTextSearchByName(AdminTextSearchDto adminTextSearchDto) {
+        if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())
+                && adminTextSearchDto.getPage() != null && adminTextSearchDto.getSize() != null) {
+
+            Pageable pageable = PageRequest.of(adminTextSearchDto.getPage(), adminTextSearchDto.getSize(),
+                    Sort.by(Sort.Direction.DESC, "id"));
+
+            List<TicketUserType> ticketUserTypeList = ticketUserTypeRepository
+                    .freeTextSearchByName(adminTextSearchDto.getSearchKeyword(), pageable);
+
+            if (ticketUserTypeList != null && !ticketUserTypeList.isEmpty()) {
+
+                List<TicketUserTypeDto> ticketUserTypeDtoList = ticketUserTypeList.stream()
+                        .map(ticketUserType -> TicketUserTypeDto.builder()
+                                .userTypeId(ticketUserType.getId())
+                                .userTypeName(ticketUserType.getUserTypeName())
+                                .status(ticketUserType.getStatus())
+                                .build())
+                        .collect(Collectors.toList());
+
+                return ticketUserTypeDtoList;
+            }
+        }
         return Collections.emptyList();
     }
 }

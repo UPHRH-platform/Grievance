@@ -3,19 +3,27 @@ package org.upsmf.grievance.service.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.upsmf.grievance.dto.AdminTextSearchDto;
 import org.upsmf.grievance.dto.TicketCouncilDto;
 import org.upsmf.grievance.dto.TicketDepartmentDto;
+import org.upsmf.grievance.dto.TicketUserTypeDto;
 import org.upsmf.grievance.exception.CustomException;
 import org.upsmf.grievance.exception.DataUnavailabilityException;
 import org.upsmf.grievance.exception.InvalidDataException;
 import org.upsmf.grievance.model.TicketCouncil;
 import org.upsmf.grievance.model.TicketDepartment;
+import org.upsmf.grievance.model.TicketUserType;
 import org.upsmf.grievance.repository.TicketCouncilRepository;
 import org.upsmf.grievance.repository.TicketDepartmentRepository;
 import org.upsmf.grievance.service.TicketDepartmentService;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -139,11 +147,13 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
 
     @Override
     public List<TicketDepartmentDto> findAllTicketDepartment() {
-        List<TicketDepartment> ticketDepartmentList = ticketDepartmentRepository.findAll();
+        List<TicketDepartment> ticketDepartmentList = new ArrayList<>();
 
-        if (ticketDepartmentList != null && !ticketDepartmentList.isEmpty()) {
+        Iterable<TicketDepartment> ticketDepartmentPage = ticketDepartmentRepository.findAll();
+        ticketDepartmentPage.forEach(ticketDepartmentList::add);
 
-            List<TicketDepartmentDto> ticketDepartmentDtoList = ticketDepartmentList.stream()
+        if (!ticketDepartmentList.isEmpty()) {
+            return ticketDepartmentList.stream()
                     .map(ticketDepartment -> TicketDepartmentDto.builder()
                             .ticketDepartmentId(ticketDepartment.getId())
                             .ticketDepartmentName(ticketDepartment.getTicketDepartmentName())
@@ -152,10 +162,36 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
                             .status(ticketDepartment.getStatus())
                             .build())
                     .collect(Collectors.toList());
-
-            return ticketDepartmentDtoList;
         }
+        return Collections.emptyList();
+    }
 
+    @Override
+    public List<TicketDepartmentDto> freeTextSearchByName(AdminTextSearchDto adminTextSearchDto) {
+        if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())
+                && adminTextSearchDto.getPage() != null && adminTextSearchDto.getSize() != null
+                && adminTextSearchDto.getCouncilId() != null) {
+
+            Pageable pageable = PageRequest.of(adminTextSearchDto.getPage(), adminTextSearchDto.getSize(),
+                    Sort.by(Sort.Direction.DESC, "id"));
+
+            List<TicketDepartment> ticketDepartmentList = ticketDepartmentRepository
+                    .freeTextSearchByNameAndCouncilId(adminTextSearchDto.getSearchKeyword(),
+                            adminTextSearchDto.getCouncilId(), pageable);
+
+            if (ticketDepartmentList != null && !ticketDepartmentList.isEmpty()) {
+
+                return ticketDepartmentList.stream()
+                        .map(ticketDepartment -> TicketDepartmentDto.builder()
+                                .ticketDepartmentId(ticketDepartment.getId())
+                                .ticketDepartmentName(ticketDepartment.getTicketDepartmentName())
+                                .ticketCouncilId(ticketDepartment.getTicketCouncilId())
+                                .ticketCouncilName(getCouncilName(ticketDepartment.getTicketCouncilId()))
+                                .status(ticketDepartment.getStatus())
+                                .build())
+                        .collect(Collectors.toList());
+            }
+        }
         return Collections.emptyList();
     }
 

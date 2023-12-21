@@ -1,6 +1,7 @@
 package org.upsmf.grievance.service;
 
 import org.springframework.lang.NonNull;
+import org.upsmf.grievance.dto.AdminTextSearchDto;
 import org.upsmf.grievance.dto.TicketCouncilDto;
 import org.upsmf.grievance.dto.TicketDepartmentDto;
 
@@ -18,4 +19,6 @@ public interface TicketDepartmentService {
     String getDepartmentName(@NonNull Long departmentId, @NonNull Long councilId);
 
     boolean validateDepartmentInCouncil(Long departmentId, Long councilId);
+
+    List<TicketDepartmentDto> freeTextSearchByName(AdminTextSearchDto adminTextSearchDto);
 }

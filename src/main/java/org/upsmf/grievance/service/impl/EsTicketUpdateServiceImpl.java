@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.upsmf.grievance.dto.UpdateUserDto;
 import org.upsmf.grievance.model.Ticket;
@@ -13,6 +14,7 @@ import org.upsmf.grievance.repository.UserDepartmentRepository;
 import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.repository.es.TicketRepository;
 import org.upsmf.grievance.service.EsTicketUpdateService;
+import org.upsmf.grievance.service.SearchService;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +36,10 @@ public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
     private UserRepository userRepository;
     @Autowired
     private UserDepartmentRepository userDepartmentRepository;
+
+    @Lazy
+    @Autowired
+    private SearchService searchService;
 
 //    @Async
     @Override
@@ -58,7 +64,8 @@ public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
 
                         log.info(">>>>>>>>>>>>>>>>>>>>>>>>>> assignedTo id list: " + ids);
 
-                        List<org.upsmf.grievance.model.es.Ticket> esTicketList = esTicketRepository.findByTicketIdIn(ids);
+//                        List<org.upsmf.grievance.model.es.Ticket> esTicketList = esTicketRepository.findByTicketIdIn(ids);
+                        List<org.upsmf.grievance.model.es.Ticket> esTicketList = searchService.getAllTicketByIdList(ids);
 
                         if (esTicketList != null && !esTicketList.isEmpty()) {
                             for (org.upsmf.grievance.model.es.Ticket ticket : esTicketList) {
@@ -71,6 +78,8 @@ public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
                             }
 
                             esTicketRepository.saveAll(esTicketList);
+                        } else {
+                            log.warn(">>>>>>>>>>> Marked Other: Unable to find any ticket to update for ids {}", ids);
                         }
                     }
                 }
@@ -104,7 +113,8 @@ public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
 
                         log.info(">>>>>>>>>>>>>>>>>>>>>>>>>> junked id list: " + ids);
 
-                        List<org.upsmf.grievance.model.es.Ticket> esTicketList = esTicketRepository.findByTicketIdIn(ids);
+//                        List<org.upsmf.grievance.model.es.Ticket> esTicketList = esTicketRepository.findByTicketIdIn(ids);
+                        List<org.upsmf.grievance.model.es.Ticket> esTicketList = searchService.getAllTicketByIdList(ids);
 
                         if (esTicketList != null && !esTicketList.isEmpty()) {
                             for (org.upsmf.grievance.model.es.Ticket ticket : esTicketList) {
@@ -113,6 +123,8 @@ public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
                             }
 
                             esTicketRepository.saveAll(esTicketList);
+                        } else {
+                            log.warn(">>>>>>>>>>> Marked Junked: Unable to find any ticket to update for ids {}", ids);
                         }
                     }
                 }
