@@ -444,10 +444,14 @@ public class TicketServiceImpl implements TicketService {
         if(updateTicketRequest.getCc()!=null && !updateTicketRequest.getCc().isBlank()) {
             ticket.setAssignedToId(updateTicketRequest.getCc());
 
-            Optional<String> ownerMailIdOptional = getOwnerMailId(ticket.getAssignedToId());
+            Optional<User> userOptional = getOwner(ticket.getAssignedToId());
 
-            if (ownerMailIdOptional.isPresent()) {
-                ticket.setOwnerEmail(ownerMailIdOptional.get());
+            if (userOptional.isPresent()) {
+                ticket.setOwnerEmail(userOptional.get().getEmail());
+            }
+
+            if ("-1".equalsIgnoreCase(updateTicketRequest.getCc())) {
+                updateCouncilDepartmentForOther(ticket);
             }
         }
 
@@ -515,7 +519,7 @@ public class TicketServiceImpl implements TicketService {
      * @param assignedToId
      * @return
      */
-    public Optional<String> getOwnerMailId(String assignedToId) {
+    public Optional<User> getOwner(String assignedToId) {
         if (org.apache.commons.lang.StringUtils.isBlank(assignedToId)) {
             log.error(">>>>>>>>>> Invalid assignedTo Id - Unable to find value");
 
@@ -544,11 +548,27 @@ public class TicketServiceImpl implements TicketService {
             log.error("Error while finding owner mail id");
         }
 
-        if (userOptional.isPresent()) {
-            return Optional.ofNullable(userOptional.get().getEmail());
+        return userOptional;
+    }
+
+    private void updateCouncilDepartmentForOther(@NonNull Ticket ticket) {
+        Optional<UserDepartment> userDepartmentOptional = userDepartmentRepository
+                .findByCouncilNameAndCouncilName("OTHER", "OTHER");
+
+        if (!userDepartmentOptional.isPresent()) {
+            log.error("Update ticket - Unable to find any user department which is tagged to OTHER (Council & Department)");
         }
 
-        return Optional.empty();
+        Optional<TicketDepartment> ticketDepartmentOptional = ticketDepartmentRepository.findById(userDepartmentOptional.get().getDepartmentId());
+
+        if (ticketDepartmentOptional.isPresent()) {
+            ticket.setTicketDepartment(ticketDepartmentOptional.get());
+        }
+
+        Optional<TicketCouncil> ticketCouncilOptional = ticketCouncilRepository.findById(userDepartmentOptional.get().getCouncilId());
+        if (ticketCouncilOptional.isPresent()) {
+            ticket.setTicketCouncil(ticketCouncilOptional.get());
+        }
     }
 
     /**
@@ -566,9 +586,9 @@ public class TicketServiceImpl implements TicketService {
         String junkByName = "";
 
 //        Calculating assingedTo name for ES record
-        if (!org.apache.commons.lang.StringUtils.isBlank(ticket.getAssignedToId()) && ! "-1".equalsIgnoreCase(ticket.getAssignedToId())) {
+        if (!org.apache.commons.lang.StringUtils.isBlank(ticket.getAssignedToId())) {
             try {
-                Optional<User> userOptional = userRepository.findById(Long.valueOf(ticket.getAssignedToId()));
+                Optional<User> userOptional = userOptional = getOwner(ticket.getAssignedToId());
 
                 if (userOptional.isPresent()) {
                     assingedToName = userOptional.get().getFirstName() + " " + userOptional.get().getLastname();
@@ -583,9 +603,9 @@ public class TicketServiceImpl implements TicketService {
         }
 
 //      Calculating junkedBy name for ES record
-        if (!org.apache.commons.lang.StringUtils.isBlank(ticket.getJunkedBy()) && ! "-1".equalsIgnoreCase(ticket.getJunkedBy())) {
+        if (!org.apache.commons.lang.StringUtils.isBlank(ticket.getJunkedBy())) {
             try {
-                Optional<User> userOptional = userRepository.findById(Long.valueOf(ticket.getJunkedBy()));
+                Optional<User> userOptional = getOwner(ticket.getAssignedToId());
 
                 if (userOptional.isPresent()) {
                     junkByName = userOptional.get().getFirstName() + " " + userOptional.get().getLastname();
