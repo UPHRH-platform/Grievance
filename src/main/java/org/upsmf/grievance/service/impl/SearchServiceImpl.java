@@ -391,6 +391,8 @@ public class SearchServiceImpl implements SearchService {
                 break;
             case "email":
                 keyValue = "requester_email";
+            case "ownerEmail":
+                keyValue = "owner_email";
                 break;
             case "requesterType":
                 keyValue = "requester_type";

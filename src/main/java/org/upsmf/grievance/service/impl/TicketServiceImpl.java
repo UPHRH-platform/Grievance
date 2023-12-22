@@ -30,7 +30,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -444,6 +443,12 @@ public class TicketServiceImpl implements TicketService {
 
         if(updateTicketRequest.getCc()!=null && !updateTicketRequest.getCc().isBlank()) {
             ticket.setAssignedToId(updateTicketRequest.getCc());
+
+            Optional<String> ownerMailIdOptional = getOwnerMailId(ticket.getAssignedToId());
+
+            if (ownerMailIdOptional.isPresent()) {
+                ticket.setOwnerEmail(ownerMailIdOptional.get());
+            }
         }
 
         if(updateTicketRequest.getPriority()!=null) {
@@ -490,6 +495,60 @@ public class TicketServiceImpl implements TicketService {
                 assigneeTicketAttachmentRepository.save(assigneeTicketAttachment);
             }
         }
+
+        if (updateTicketRequest.getTicketCouncilId() != null && updateTicketRequest.getTicketCouncilId() != 0) {
+            Optional<TicketCouncil> ticketCouncilOptional = ticketCouncilRepository.findById(updateTicketRequest.getTicketCouncilId());
+            if (ticketCouncilOptional.isPresent()) {
+                ticket.setTicketCouncil(ticketCouncilOptional.get());
+            }
+        }
+
+        if (updateTicketRequest.getTicketDepartmentId() != null && updateTicketRequest.getTicketDepartmentId() != 0) {
+            Optional<TicketDepartment> ticketDepartmentOptional = ticketDepartmentRepository.findById(updateTicketRequest.getTicketDepartmentId());
+            if (ticketDepartmentOptional.isPresent()) {
+                ticket.setTicketDepartment(ticketDepartmentOptional.get());
+            }
+        }
+    }
+
+    /**
+     * @param assignedToId
+     * @return
+     */
+    public Optional<String> getOwnerMailId(String assignedToId) {
+        if (org.apache.commons.lang.StringUtils.isBlank(assignedToId)) {
+            log.error(">>>>>>>>>> Invalid assignedTo Id - Unable to find value");
+
+            return Optional.empty();
+        }
+
+        Optional<User> userOptional = Optional.empty();
+
+        try {
+            if ("-1".equalsIgnoreCase(assignedToId)) {
+                Optional<UserDepartment> userDepartmentOptional = userDepartmentRepository
+                        .findByCouncilNameAndCouncilName("OTHER", "OTHER");
+
+                if (!userDepartmentOptional.isPresent()) {
+                    log.error("Unable to find any user department which is tagged to OTHER (Council & Department)");
+                }
+                userOptional = userRepository.findByUserDepartment(userDepartmentOptional.get());
+
+            } else {
+                Long userId = Long.valueOf(assignedToId);
+                userOptional = userRepository.findById(userId);
+            }
+        } catch (NumberFormatException e) {
+            log.error("Error while parsing assinged to");
+        } catch (Exception e) {
+            log.error("Error while finding owner mail id");
+        }
+
+        if (userOptional.isPresent()) {
+            return Optional.ofNullable(userOptional.get().getEmail());
+        }
+
+        return Optional.empty();
     }
 
     /**
@@ -547,6 +606,7 @@ public class TicketServiceImpl implements TicketService {
                 .lastName(ticket.getLastName())
                 .phone(ticket.getPhone())
                 .email(ticket.getEmail())
+                .ownerEmail(ticket.getOwnerEmail())
 //                .requesterType(ticket.getRequesterType()) //TODO: rkr: replace with user type
                 .assignedToId(ticket.getAssignedToId())
                 .assignedToName(assingedToName) // get user details based on ID

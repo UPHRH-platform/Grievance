@@ -38,6 +38,9 @@ public class Ticket {
     @Field(name = "requester_email")
     private String email;
 
+    @Field(name = "owner_email")
+    private String ownerEmail;
+
     @Field(name = "assigned_to_id")
     private String assignedToId;
 
