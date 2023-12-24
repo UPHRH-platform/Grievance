@@ -13,4 +13,6 @@ public interface SearchService {
     Map<String, Object> dashboardReport(SearchRequest searchRequest);
 
     long escalateTickets(Long epochTime);
+
+    Map<String, Object> dashboardReportByUserId(Long id);
 }

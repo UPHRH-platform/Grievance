@@ -199,6 +199,11 @@ public class SearchServiceImpl implements SearchService {
         return searchResponse.getHits().getTotalHits().value;
     }
 
+    @Override
+    public Map<String, Object> dashboardReportByUserId(Long id) {
+        return null;
+    }
+
     private void escalatePendingTickets(SearchResponse searchResponse) {
         Iterator<SearchHit> hits = searchResponse.getHits().iterator();
         TaskExecutor taskExecutor = new ConcurrentTaskScheduler();

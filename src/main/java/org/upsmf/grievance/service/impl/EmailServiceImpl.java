@@ -24,18 +24,16 @@ import org.upsmf.grievance.repository.UserDepartmentRepository;
 import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.repository.UserRoleRepository;
 import org.upsmf.grievance.service.EmailService;
-import org.upsmf.grievance.service.TicketDepartmentService;
+import org.upsmf.grievance.service.SearchService;
 import org.upsmf.grievance.util.DateUtil;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import java.io.File;
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 // Annotation
 @Service
@@ -65,6 +63,9 @@ public class EmailServiceImpl implements EmailService {
 
     @Autowired
     private TicketDepartmentRepository ticketDepartmentRepository;
+
+    @Autowired
+    private SearchService searchService;
 
     @Override
     public void sendCreateTicketMail(EmailDetails details, Ticket ticket) {
@@ -662,5 +663,11 @@ public class EmailServiceImpl implements EmailService {
         catch (Exception e) {
             log.error("Error while Sending Mail", e);
         }
+    }
+
+    @Override
+    public void sendMailTicketAggregateMailToNodalOfficer(Long userId, String email) {
+
+
     }
 }

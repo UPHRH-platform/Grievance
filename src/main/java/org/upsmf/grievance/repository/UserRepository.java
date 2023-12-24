@@ -32,5 +32,6 @@ public interface UserRepository extends PagingAndSortingRepository<User,Long> {
 
     List<User> findAllByUserDepartmentIn(List<UserDepartment> userDepartmentList);
 
-    List<User> findAllByRolesInAndStatus(String role, int status);
+    @Query(value = "select * from users u where status = 1", nativeQuery = true)
+    List<User> findAllActiveUsers();
 }

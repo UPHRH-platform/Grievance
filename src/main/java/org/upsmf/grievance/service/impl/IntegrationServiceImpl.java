@@ -45,6 +45,7 @@ import org.upsmf.grievance.util.ErrorCode;
 
 import javax.transaction.Transactional;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -889,10 +890,13 @@ public class IntegrationServiceImpl implements IntegrationService {
         }
     }
 
-    public void getUsersByRoles() {
-        List<User> allByRolesInAndStatus = userRepository.findAllByRolesInAndStatus("NODALOFFICER", 1);
-        log.debug("Query result - {}", allByRolesInAndStatus);
+    @Override
+    public List<User> getAllUsersByRole(String role) {
+        List<User> allActiveUsers = userRepository.findAllActiveUsers();
+        if(allActiveUsers == null) {
+            return new ArrayList<>();
+        }
+        allActiveUsers.stream().filter(x -> Arrays.stream(x.getRoles()).anyMatch(userRole -> userRole == "NODALOFFICER")).collect(Collectors.toList());
+        return allActiveUsers;
     }
-
-
 }

@@ -11,6 +11,7 @@ import org.upsmf.grievance.constants.Constants;
 import org.upsmf.grievance.dto.SearchDateRange;
 import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.model.EmailDetails;
+import org.upsmf.grievance.model.User;
 import org.upsmf.grievance.service.EmailService;
 import org.upsmf.grievance.service.IntegrationService;
 import org.upsmf.grievance.service.SearchService;
@@ -20,6 +21,7 @@ import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 @Component
 @Slf4j
@@ -43,7 +45,10 @@ public class NightlyJobScheduler {
     @Autowired
     private IntegrationService integrationService;
 
-    @Scheduled(cron = "0 1 0 * * ?")
+    /**
+     * @Scheduled(cron = "${cron.expression}")
+     */
+    @Scheduled(cron = "${nightly.job.cron.expression}", zone = "Asia/Kolkata")
     public void runNightlyJob(){
         log.info("Starting the Nightly job");
         SearchRequest searchRequest = new SearchRequest();
@@ -67,8 +72,9 @@ public class NightlyJobScheduler {
 
     /**
      * scheduler will run at interval of 4 hours
+     * @Scheduled(cron = "${cron.expression}")
      */
-    @Scheduled(cron = "0 0 */4 * * ?")
+    @Scheduled(cron = "${escalation.job.cron.expression}", zone = "Asia/Kolkata")
     public void escalateTickets(){
         log.info("Starting the escalation job");
         long lastUpdateTimeBeforeEscalation = LocalDateTime.now().minusDays(Integer.parseInt(adminEscalationDays)).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
@@ -78,14 +84,44 @@ public class NightlyJobScheduler {
 
     /**
      * scheduler will run at 5 pm every day
+     * @Scheduled(cron = "${cron.expression}")
      */
-    @Scheduled(cron = "0 0 17 * * ?")
+    @Scheduled(cron = "${ticket.aggregator.job.cron.expression}", zone = "Asia/Kolkata")
     public void newTicketsByUser(){
         log.info("Starting the ticket aggregator job");
-        // get all Nodal officers
-
-        // loop to get today's assigned tickets for nodal officer
-        // send mail
-        log.info("No of tickets ");
+        ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = null;
+        try {
+            // get all Nodal officers
+            List<User> allUsersByRole = integrationService.getAllUsersByRole("NODALOFFICER");
+            if(allUsersByRole.isEmpty()) {
+                log.info("Email sending list is empty");
+                return;
+            }
+            scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(10);
+            // loop to get today's assigned tickets for nodal officer
+            ScheduledThreadPoolExecutor finalScheduledThreadPoolExecutor = scheduledThreadPoolExecutor;
+            allUsersByRole.stream().forEach(user -> {
+                if(!user.getEmail().isBlank()) {
+                    finalScheduledThreadPoolExecutor.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            // fetch user data
+                            searchService.dashboardReportByUserId(user.getId());
+                            // send mail
+                            emailService.sendMailTicketAggregateMailToNodalOfficer(user.getId(), user.getEmail());
+                        }
+                    });
+                }});
+            while (finalScheduledThreadPoolExecutor.getQueue().size() > 0) {
+                // do nothing
+                log.info("Queued Tasks in count - {}", finalScheduledThreadPoolExecutor.getQueue().size());
+            }
+            log.info("No of tasks competed - {}", finalScheduledThreadPoolExecutor.getCompletedTaskCount());
+        } catch (Exception e) {
+            log.error("error in sending mail ", e);
+        } finally {
+            scheduledThreadPoolExecutor.shutdown();
+            scheduledThreadPoolExecutor = null;
+        }
     }
 }
