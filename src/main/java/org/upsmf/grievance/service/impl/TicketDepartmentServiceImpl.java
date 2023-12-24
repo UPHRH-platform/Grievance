@@ -3,19 +3,27 @@ package org.upsmf.grievance.service.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.upsmf.grievance.dto.AdminTextSearchDto;
 import org.upsmf.grievance.dto.TicketCouncilDto;
 import org.upsmf.grievance.dto.TicketDepartmentDto;
+import org.upsmf.grievance.dto.TicketUserTypeDto;
 import org.upsmf.grievance.exception.CustomException;
 import org.upsmf.grievance.exception.DataUnavailabilityException;
 import org.upsmf.grievance.exception.InvalidDataException;
-import org.upsmf.grievance.model.TicketCouncil;
-import org.upsmf.grievance.model.TicketDepartment;
+import org.upsmf.grievance.model.*;
 import org.upsmf.grievance.repository.TicketCouncilRepository;
 import org.upsmf.grievance.repository.TicketDepartmentRepository;
+import org.upsmf.grievance.repository.UserDepartmentRepository;
+import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.service.TicketDepartmentService;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +38,12 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
 
     @Autowired
     private TicketCouncilRepository ticketCouncilRepository;
+
+    @Autowired
+    private UserDepartmentRepository userDepartmentRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     /**
      * @param ticketDepartmentDto
@@ -51,6 +65,13 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
         if (!ticketCouncilOptional.isPresent()) {
             log.error("Unable to find council details");
             throw new DataUnavailabilityException("Unable to find council details");
+        }
+
+        if (isDepartmentNameExistInCouncil(ticketDepartmentDto.getTicketDepartmentName(),
+                ticketDepartmentDto.getTicketCouncilId())) {
+
+            log.error("Department name is already exist in the same council");
+            throw new InvalidDataException("Department name is already exist in the same council");
         }
 
         TicketDepartment ticketDepartment = TicketDepartment.builder()
@@ -85,6 +106,13 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
             throw new DataUnavailabilityException("Unable to find council details");
         }
 
+        if (isDepartmentNameExistInCouncil(ticketDepartmentDto.getTicketDepartmentName(),
+                ticketDepartmentDto.getTicketCouncilId())) {
+
+            log.error("Department name is already exist in the same council");
+            throw new InvalidDataException("Department name is already exist in the same council");
+        }
+
         Optional<TicketDepartment> ticketDepartmentOptional = ticketDepartmentRepository
                 .findById(ticketDepartmentDto.getTicketDepartmentId());
 
@@ -111,13 +139,27 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
         }
     }
 
-    @Override
-    public List<TicketDepartmentDto> findAllTicketDepartment() {
-        List<TicketDepartment> ticketDepartmentList = ticketDepartmentRepository.findAll();
+    private boolean isDepartmentNameExistInCouncil(@NonNull String departmentName, @NonNull Long councilId) {
+
+        List<TicketDepartment> ticketDepartmentList = ticketDepartmentRepository
+                .findByTicketCouncilIdAndTicketDepartmentName(councilId, StringUtils.upperCase(departmentName));
 
         if (ticketDepartmentList != null && !ticketDepartmentList.isEmpty()) {
+            return true;
+        }
 
-            List<TicketDepartmentDto> ticketDepartmentDtoList = ticketDepartmentList.stream()
+        return false;
+    }
+
+    @Override
+    public List<TicketDepartmentDto> findAllTicketDepartment() {
+        List<TicketDepartment> ticketDepartmentList = new ArrayList<>();
+
+        Iterable<TicketDepartment> ticketDepartmentPage = ticketDepartmentRepository.findAll();
+        ticketDepartmentPage.forEach(ticketDepartmentList::add);
+
+        if (!ticketDepartmentList.isEmpty()) {
+            return ticketDepartmentList.stream()
                     .map(ticketDepartment -> TicketDepartmentDto.builder()
                             .ticketDepartmentId(ticketDepartment.getId())
                             .ticketDepartmentName(ticketDepartment.getTicketDepartmentName())
@@ -125,11 +167,36 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
                             .ticketCouncilName(getCouncilName(ticketDepartment.getTicketCouncilId()))
                             .status(ticketDepartment.getStatus())
                             .build())
+                    .sorted(((ticketDepartment1, ticketDepartment2) ->
+                            ticketDepartment1.getTicketDepartmentName()
+                                    .compareToIgnoreCase(ticketDepartment2.getTicketDepartmentName())))
                     .collect(Collectors.toList());
-
-            return ticketDepartmentDtoList;
         }
+        return Collections.emptyList();
+    }
 
+    @Override
+    public List<TicketDepartmentDto> freeTextSearchByName(AdminTextSearchDto adminTextSearchDto) {
+        if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())
+                && adminTextSearchDto.getCouncilId() != null) {
+
+            List<TicketDepartment> ticketDepartmentList = ticketDepartmentRepository
+                    .freeTextSearchByNameAndCouncilId(adminTextSearchDto.getSearchKeyword(),
+                            adminTextSearchDto.getCouncilId());
+
+            if (ticketDepartmentList != null && !ticketDepartmentList.isEmpty()) {
+
+                return ticketDepartmentList.stream()
+                        .map(ticketDepartment -> TicketDepartmentDto.builder()
+                                .ticketDepartmentId(ticketDepartment.getId())
+                                .ticketDepartmentName(ticketDepartment.getTicketDepartmentName())
+                                .ticketCouncilId(ticketDepartment.getTicketCouncilId())
+                                .ticketCouncilName(getCouncilName(ticketDepartment.getTicketCouncilId()))
+                                .status(ticketDepartment.getStatus())
+                                .build())
+                        .collect(Collectors.toList());
+            }
+        }
         return Collections.emptyList();
     }
 
@@ -201,5 +268,49 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
         }
 
         return false;
+    }
+
+    /**
+     * @param councilId
+     * @return
+     */
+    public List<TicketDepartmentDto> getAssignedDepartment(Long councilId) {
+        if (councilId != null) {
+            List<UserDepartment> userDepartmentList = userDepartmentRepository.findAllByCouncilId(councilId);
+
+            if (userDepartmentList == null || userDepartmentList.isEmpty()) {
+                log.warn(">>>>>>>>>>>>> Unable to find User Department for given council Id {}", councilId);
+                return Collections.emptyList();
+            }
+
+            List<User> userList = userRepository.findAllByUserDepartmentIn(userDepartmentList);
+
+            if (userList == null || userList.isEmpty()) {
+                log.warn(">>>>>>>>>>>>> Unable to find User in user department {}", userDepartmentList);
+                return Collections.emptyList();
+            }
+
+            List<Long> departmentIds = userList.stream()
+                    .filter(user -> user.getStatus() == 1)
+                    .filter(user -> user.getUserDepartment() != null)
+                    .map(user -> user.getUserDepartment().getDepartmentId())
+                    .collect(Collectors.toList());
+
+            if (departmentIds != null && !departmentIds.isEmpty()) {
+                List<TicketDepartment> ticketDepartmentList = ticketDepartmentRepository.findAllById(departmentIds);
+
+                if (ticketDepartmentList != null && !ticketDepartmentList.isEmpty()) {
+                    return ticketDepartmentList.stream()
+                            .filter(ticketDepartment -> Boolean.TRUE.equals(ticketDepartment.getStatus()))
+                            .map(ticketDepartment -> TicketDepartmentDto.builder()
+                                    .ticketDepartmentName(ticketDepartment.getTicketDepartmentName())
+                                    .ticketDepartmentId(ticketDepartment.getId())
+                                    .status(ticketDepartment.getStatus())
+                                    .build())
+                            .collect(Collectors.toList());
+                }
+            }
+        }
+        return Collections.emptyList();
     }
 }

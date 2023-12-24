@@ -11,7 +11,7 @@ import javax.validation.constraints.*;
 @ToString(includeFieldNames = true)
 public class FeedbackDto {
 
-    @NotBlank(message = "Ticket ID is required")
+    @NotNull(message = "Ticket ID is required")
     private Long ticketId;
     @NotBlank(message = "First name is required")
     private String firstName;

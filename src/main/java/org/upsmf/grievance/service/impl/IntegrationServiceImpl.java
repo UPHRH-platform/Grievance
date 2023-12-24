@@ -18,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.*;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.lang.NonNull;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -238,7 +239,8 @@ public class IntegrationServiceImpl implements IntegrationService {
                 throw new InvalidDataException("Both council and department id are allowed or none");
             }
 
-            if (attributeMap.containsKey("departmentId") && attributeMap.containsKey("councilId")) {
+            if (attributeMap.containsKey("departmentId") && attributeMap.containsKey("councilId")
+                    && attributeMap.get("departmentId") != null && attributeMap.get("councilId") != null) {
                 try {
                     Long departmentId = Long.valueOf(attributeMap.get("departmentId"));
                     Long councilId = Long.valueOf(attributeMap.get("councilId"));
@@ -253,6 +255,12 @@ public class IntegrationServiceImpl implements IntegrationService {
                     String departmentName = ticketDepartmentService.getDepartmentName(departmentId, councilId);
                     String councilName = ticketCouncilService.getCouncilName(councilId);
 
+//                  Prevent creating multiple grievance nodal admin
+                    if (findGrievanceNodalAdmin(departmentName).isPresent()) {
+                        log.error("User has already been created for other department");
+                        throw new InvalidDataException("User has already been created for other department");
+                    }
+
                     attributeMap.put("departmentId", String.valueOf(departmentId));
                     attributeMap.put("departmentName", departmentName);
                     attributeMap.put("councilId", String.valueOf(councilId));
@@ -262,14 +270,32 @@ public class IntegrationServiceImpl implements IntegrationService {
                 } catch (NumberFormatException e) {
                     log.error("Error while parsing departmetn | council id");
                     throw new InvalidDataException("Department | coucil id only support number");
+                } catch (CustomException e) {
+                    log.error("Error while checking department and council for user");
+                    throw new DataUnavailabilityException(e.getMessage(), "Error while checking department and council for user");
                 } catch (Exception e) {
                     log.error("Error while calculating department and council details");
                     throw new DataUnavailabilityException("Unable to get department | council details");
                 }
             }
         }
-
         return Collections.emptyMap();
+    }
+
+    /**
+     * @param departmentName
+     * @return
+     */
+    private Optional<User> findGrievanceNodalAdmin(@NonNull String departmentName) {
+        if ("OTHER".equalsIgnoreCase(departmentName)) {
+            Optional<UserDepartment> userDepartmentOptional = userDepartmentRepository
+                    .findByCouncilNameAndCouncilName("OTHER", "OTHER");
+
+            if (userDepartmentOptional.isPresent()) {
+                return userRepository.findByUserDepartment(userDepartmentOptional.get());
+            }
+        }
+        return Optional.empty();
     }
 
     private void validateUserPayload(CreateUserDto userDto) {
@@ -462,6 +488,7 @@ public class IntegrationServiceImpl implements IntegrationService {
 
             return ResponseEntity.ok().body("User updated successful");
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException(e.getLocalizedMessage());
         }
     }
@@ -532,7 +559,7 @@ public class IntegrationServiceImpl implements IntegrationService {
                     log.error("Error while parsing department | council id");
                     throw new InvalidDataException("Department | coucil id only support number");
                 } catch (Exception e) {
-                    log.error("Error while calculating department and council details");
+                    log.error("Error while calculating department and council details", e);
                     throw new DataUnavailabilityException("Unable to get department | council details");
                 }
             }
@@ -564,6 +591,38 @@ public class IntegrationServiceImpl implements IntegrationService {
         ArrayNode nodes = mapper.valueToTree(childNodes);
         ((ObjectNode) userResponse).put("result", nodes);
         return ResponseEntity.ok(mapper.writeValueAsString(userResponse));
+    }
+
+    @Override
+    public List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId) {
+        List<UserResponseDto> userResponseDtoList = new ArrayList<>();
+
+        try {
+            boolean validDepartment = ticketDepartmentService.validateDepartmentInCouncil(departmentId, councilId);
+
+            if (!validDepartment) {
+                log.error("Failed to validate department id and council id");
+                throw new InvalidDataException("Failed to validate department and coucil id mapping");
+            }
+
+            List<UserDepartment> userDepartmentList = userDepartmentRepository
+                    .findAllByDepartmentIdAndCouncilId(departmentId, councilId);
+
+            if (userDepartmentList != null && !userDepartmentList.isEmpty()) {
+                List<User> userList = userRepository.findAllByUserDepartmentIn(userDepartmentList);
+
+                if (userList != null && !userList.isEmpty()) {
+                    userResponseDtoList = userList.stream()
+                            .map(user -> createUserResponse(user))
+                            .collect(Collectors.toList());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error while fetching user list based on department id and council id", e);
+            throw new DataUnavailabilityException("Unable to get user detils");
+        }
+
+        return userResponseDtoList;
     }
 
     @Override

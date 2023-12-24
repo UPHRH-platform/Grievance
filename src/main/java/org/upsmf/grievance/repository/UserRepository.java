@@ -28,7 +28,7 @@ public interface UserRepository extends PagingAndSortingRepository<User,Long> {
             + "OR LOWER(u.phoneNumber) LIKE LOWER(CONCAT('%', ?1,'%'))")
     Page<User> findByEmailWithPagination(String searchKeyword, Pageable pageable);
 
-    List<User> findByUserDepartment(Long departmentId);
+    Optional<User> findByUserDepartment(UserDepartment userDepartment);
 
     List<User> findAllByUserDepartmentIn(List<UserDepartment> userDepartmentList);
 

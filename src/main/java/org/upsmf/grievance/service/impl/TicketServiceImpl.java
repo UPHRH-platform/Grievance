@@ -28,12 +28,8 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -196,6 +192,7 @@ public class TicketServiceImpl implements TicketService {
 
         Long userId = getFirstActiveUserByDepartmentId(ticketRequest.getTicketDepartmentId(), ticketRequest.getTicketCouncilId());
 
+        Optional<User> userOptional = userRepository.findById(userId);
 
         return Ticket.builder()
                 .createdDate(new Timestamp(DateUtil.getCurrentDate().getTime()))
@@ -203,7 +200,6 @@ public class TicketServiceImpl implements TicketService {
                 .lastName(ticketRequest.getLastName())
                 .phone(ticketRequest.getPhone())
                 .email(ticketRequest.getEmail())
-//                .requesterType(ticketRequest.getUserType()) //TODO: replace with user type
                 .assignedToId(String.valueOf(userId))
                 .description(ticketRequest.getDescription())
                 .updatedDate(currentTimestamp)
@@ -212,13 +208,14 @@ public class TicketServiceImpl implements TicketService {
                 .escalatedDate(Timestamp.valueOf(escalationDateTime))
                 .escalatedTo("-1")
                 .status(TicketStatus.OPEN)
-                .requestType(ticketRequest.getRequestType()) //TODO: userDepartment details
+                .requestType(ticketRequest.getRequestType())
                 .priority(TicketPriority.LOW)
                 .escalatedBy("-1")
                 .reminderCounter(0L)
                 .ticketUserType(userTypeOptional.get())
                 .ticketCouncil(ticketCouncilOptional.get())
                 .ticketDepartment(ticketDepartmentOptional.get())
+                .ownerEmail(userOptional.isPresent() ? userOptional.get().getEmail() : null)
                 .build();
     }
 
@@ -241,6 +238,12 @@ public class TicketServiceImpl implements TicketService {
             throw new DataUnavailabilityException("Unable to find ticket department");
         }
 
+        Optional<Long> otherAssingedId = getOhterAssignmentId(ticketDepartmentOptional.get());
+
+        if (otherAssingedId.isPresent()) {
+            return otherAssingedId.get();
+        }
+
         List<UserDepartment> userDepartmentList = userDepartmentRepository
                 .findAllByDepartmentIdAndCouncilId(departmentId, councilId);
 
@@ -259,6 +262,7 @@ public class TicketServiceImpl implements TicketService {
         Optional<Long> activeUser = userList.stream()
                 .filter(user -> user.getStatus() == 1)
                 .map(User::getId)
+                .skip(new Random().nextInt(userList.size()))
                 .findFirst();
 
         if (!activeUser.isPresent()) {
@@ -267,6 +271,39 @@ public class TicketServiceImpl implements TicketService {
         }
 
         return activeUser.get();
+    }
+
+    /**
+     * It will check if department is other then it'll return back with -1 (assignedTo value)
+     *
+     * @param ticketDepartment
+     * @return
+     */
+    private Optional<Long> getOhterAssignmentId(@NonNull TicketDepartment ticketDepartment) {
+        if ("OTHER".equalsIgnoreCase(ticketDepartment.getTicketDepartmentName())) {
+
+            return Optional.ofNullable(-1L);
+        }
+        return Optional.empty();
+    }
+
+    private Optional<Long> findGrievanceNodalAdmin(@NonNull TicketDepartment ticketDepartment) {
+        if ("Other".equalsIgnoreCase(ticketDepartment.getTicketDepartmentName())) {
+
+            Optional<UserDepartment> userDepartmentOptional = userDepartmentRepository
+                    .findByCouncilNameAndCouncilName("OTHER", "OTHER");
+
+            if (userDepartmentOptional.isPresent()) {
+                Optional<User> userOptional = userRepository
+                        .findByUserDepartment(userDepartmentOptional.get());
+
+                if (userOptional.isPresent()) {
+                    return Optional.ofNullable(userOptional.get().getId());
+                }
+            }
+        }
+
+        return Optional.empty();
     }
 
     /**
@@ -309,6 +346,7 @@ public class TicketServiceImpl implements TicketService {
             generateFeedbackLinkAndEmail(ticket);
             return ticket;
         } else if (curentUpdatedTicket.getStatus().name().equalsIgnoreCase(TicketStatus.INVALID.name())) {
+            ticket.setJunk(updateTicketRequest.getIsJunk());
             generateFeedbackLinkAndEmailForJunkTicket(ticket);
             return ticket;
         }else if (updateTicketRequest.getIsNudged() != null && updateTicketRequest.getIsNudged()
@@ -317,6 +355,12 @@ public class TicketServiceImpl implements TicketService {
             return ticket;
         } else {
             EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Resolution of Your Grievance - " + curentUpdatedTicket.getTicketId()).recipient(curentUpdatedTicket.getEmail()).build();
+            ticket.setOther(updateTicketRequest.getIsOther());
+
+            if (ticket.getAssignedToId() != null && ticket.getAssignedToId().equalsIgnoreCase("-1")) {
+                emailService.sendMailToGrievanceNodal(resolutionOfYourGrievance, ticket);
+            }
+
             emailService.sendUpdateTicketMail(resolutionOfYourGrievance, ticket);
             return ticket;
         }
@@ -384,6 +428,7 @@ public class TicketServiceImpl implements TicketService {
      */
     private void setUpdateTicket(UpdateTicketRequest updateTicketRequest, Ticket ticket) throws Exception {
         // TODO check request role and permission
+
         if(updateTicketRequest.getStatus()!=null) {
             ticket.setStatus(updateTicketRequest.getStatus());
         }
@@ -397,14 +442,32 @@ public class TicketServiceImpl implements TicketService {
         }
 
         if(updateTicketRequest.getCc()!=null && !updateTicketRequest.getCc().isBlank()) {
-
             ticket.setAssignedToId(updateTicketRequest.getCc());
+
+            Optional<User> userOptional = getOwner(ticket.getAssignedToId());
+
+            if (userOptional.isPresent()) {
+                ticket.setOwnerEmail(userOptional.get().getEmail());
+            }
+
+            if ("-1".equalsIgnoreCase(updateTicketRequest.getCc())) {
+                updateCouncilDepartmentForOther(ticket);
+            }
         }
+
         if(updateTicketRequest.getPriority()!=null) {
             ticket.setPriority(updateTicketRequest.getPriority());
         }
+
+        if (Boolean.TRUE.equals(updateTicketRequest.getIsOther())) {
+            ticket.setOther(updateTicketRequest.getIsOther());
+            ticket.setOtherByReason(updateTicketRequest.getOtherByReason());
+        }
+
         if(Boolean.TRUE.equals(updateTicketRequest.getIsJunk())) {
             ticket.setJunk(updateTicketRequest.getIsJunk());
+            ticket.setJunkByReason(updateTicketRequest.getJunkByReason());
+
             if (updateTicketRequest.getRequestedBy() == null || updateTicketRequest.getRequestedBy().isBlank()) {
                 ticket.setJunkedBy("-1");
             } else {
@@ -414,6 +477,8 @@ public class TicketServiceImpl implements TicketService {
                 String junkedBy = firstName + " " + lastName;
                 ticket.setJunkedBy(String.valueOf(user.getId()));
             }
+        } else if (Boolean.FALSE.equals(updateTicketRequest.getIsJunk())) {
+            ticket.setJunk(false);
         }
         ticket.setUpdatedDate(new Timestamp(DateUtil.getCurrentDate().getTime()));
         // update assignee comments
@@ -434,6 +499,76 @@ public class TicketServiceImpl implements TicketService {
                 assigneeTicketAttachmentRepository.save(assigneeTicketAttachment);
             }
         }
+
+        if (updateTicketRequest.getTicketCouncilId() != null && updateTicketRequest.getTicketCouncilId() != 0) {
+            Optional<TicketCouncil> ticketCouncilOptional = ticketCouncilRepository.findById(updateTicketRequest.getTicketCouncilId());
+            if (ticketCouncilOptional.isPresent()) {
+                ticket.setTicketCouncil(ticketCouncilOptional.get());
+            }
+        }
+
+        if (updateTicketRequest.getTicketDepartmentId() != null && updateTicketRequest.getTicketDepartmentId() != 0) {
+            Optional<TicketDepartment> ticketDepartmentOptional = ticketDepartmentRepository.findById(updateTicketRequest.getTicketDepartmentId());
+            if (ticketDepartmentOptional.isPresent()) {
+                ticket.setTicketDepartment(ticketDepartmentOptional.get());
+            }
+        }
+    }
+
+    /**
+     * @param assignedToId
+     * @return
+     */
+    public Optional<User> getOwner(String assignedToId) {
+        if (org.apache.commons.lang.StringUtils.isBlank(assignedToId)) {
+            log.error(">>>>>>>>>> Invalid assignedTo Id - Unable to find value");
+
+            return Optional.empty();
+        }
+
+        Optional<User> userOptional = Optional.empty();
+
+        try {
+            if ("-1".equalsIgnoreCase(assignedToId)) {
+                Optional<UserDepartment> userDepartmentOptional = userDepartmentRepository
+                        .findByCouncilNameAndCouncilName("OTHER", "OTHER");
+
+                if (!userDepartmentOptional.isPresent()) {
+                    log.error("Unable to find any user department which is tagged to OTHER (Council & Department)");
+                }
+                userOptional = userRepository.findByUserDepartment(userDepartmentOptional.get());
+
+            } else {
+                Long userId = Long.valueOf(assignedToId);
+                userOptional = userRepository.findById(userId);
+            }
+        } catch (NumberFormatException e) {
+            log.error("Error while parsing assinged to");
+        } catch (Exception e) {
+            log.error("Error while finding owner mail id");
+        }
+
+        return userOptional;
+    }
+
+    private void updateCouncilDepartmentForOther(@NonNull Ticket ticket) {
+        Optional<UserDepartment> userDepartmentOptional = userDepartmentRepository
+                .findByCouncilNameAndCouncilName("OTHER", "OTHER");
+
+        if (!userDepartmentOptional.isPresent()) {
+            log.error("Update ticket - Unable to find any user department which is tagged to OTHER (Council & Department)");
+        }
+
+        Optional<TicketDepartment> ticketDepartmentOptional = ticketDepartmentRepository.findById(userDepartmentOptional.get().getDepartmentId());
+
+        if (ticketDepartmentOptional.isPresent()) {
+            ticket.setTicketDepartment(ticketDepartmentOptional.get());
+        }
+
+        Optional<TicketCouncil> ticketCouncilOptional = ticketCouncilRepository.findById(userDepartmentOptional.get().getCouncilId());
+        if (ticketCouncilOptional.isPresent()) {
+            ticket.setTicketCouncil(ticketCouncilOptional.get());
+        }
     }
 
     /**
@@ -451,9 +586,9 @@ public class TicketServiceImpl implements TicketService {
         String junkByName = "";
 
 //        Calculating assingedTo name for ES record
-        if (!org.apache.commons.lang.StringUtils.isBlank(ticket.getAssignedToId()) && ! "-1".equalsIgnoreCase(ticket.getAssignedToId())) {
+        if (!org.apache.commons.lang.StringUtils.isBlank(ticket.getAssignedToId())) {
             try {
-                Optional<User> userOptional = userRepository.findById(Long.valueOf(ticket.getAssignedToId()));
+                Optional<User> userOptional = userOptional = getOwner(ticket.getAssignedToId());
 
                 if (userOptional.isPresent()) {
                     assingedToName = userOptional.get().getFirstName() + " " + userOptional.get().getLastname();
@@ -468,9 +603,9 @@ public class TicketServiceImpl implements TicketService {
         }
 
 //      Calculating junkedBy name for ES record
-        if (!org.apache.commons.lang.StringUtils.isBlank(ticket.getJunkedBy()) && ! "-1".equalsIgnoreCase(ticket.getJunkedBy())) {
+        if (!org.apache.commons.lang.StringUtils.isBlank(ticket.getJunkedBy())) {
             try {
-                Optional<User> userOptional = userRepository.findById(Long.valueOf(ticket.getJunkedBy()));
+                Optional<User> userOptional = getOwner(ticket.getAssignedToId());
 
                 if (userOptional.isPresent()) {
                     junkByName = userOptional.get().getFirstName() + " " + userOptional.get().getLastname();
@@ -491,11 +626,13 @@ public class TicketServiceImpl implements TicketService {
                 .lastName(ticket.getLastName())
                 .phone(ticket.getPhone())
                 .email(ticket.getEmail())
+                .ownerEmail(ticket.getOwnerEmail())
 //                .requesterType(ticket.getRequesterType()) //TODO: rkr: replace with user type
                 .assignedToId(ticket.getAssignedToId())
                 .assignedToName(assingedToName) // get user details based on ID
                 .description(ticket.getDescription())
                 .junk(ticket.isJunk())
+                .other(ticket.getOther())
                 .junkedBy(ticket.getJunkedBy())
                 .junkedByName(junkByName)
                 .createdDate(ticket.getCreatedDate().toLocalDateTime().format(dateTimeFormatter))

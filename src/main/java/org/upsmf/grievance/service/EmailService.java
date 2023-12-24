@@ -30,4 +30,6 @@ public interface EmailService {
     void sendMailToRaiserForEscalatedTicket(EmailDetails details, Ticket ticket);
 
     void sendMailTicketAggregateMailToNodalOfficer(Long userId, String email);
+
+    void sendMailToGrievanceNodal(EmailDetails details, Ticket ticket);
 }

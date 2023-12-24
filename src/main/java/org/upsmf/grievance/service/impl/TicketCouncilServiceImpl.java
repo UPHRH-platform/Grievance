@@ -3,17 +3,26 @@ package org.upsmf.grievance.service.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.upsmf.grievance.dto.AdminTextSearchDto;
 import org.upsmf.grievance.dto.TicketCouncilDto;
 import org.upsmf.grievance.dto.TicketDepartmentDto;
+import org.upsmf.grievance.dto.TicketUserTypeDto;
 import org.upsmf.grievance.exception.CustomException;
 import org.upsmf.grievance.exception.DataUnavailabilityException;
 import org.upsmf.grievance.exception.InvalidDataException;
 import org.upsmf.grievance.model.TicketCouncil;
+import org.upsmf.grievance.model.TicketDepartment;
+import org.upsmf.grievance.model.TicketUserType;
 import org.upsmf.grievance.repository.TicketCouncilRepository;
 import org.upsmf.grievance.service.TicketCouncilService;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -63,7 +72,7 @@ public class TicketCouncilServiceImpl implements TicketCouncilService {
         }
 
         Optional<TicketCouncil> ticketCouncilNameOptional = ticketCouncilRepository
-                .findByTicketCouncilName(ticketCouncilDto.getTicketCouncilName());
+                .findByTicketCouncilName(StringUtils.upperCase(ticketCouncilDto.getTicketCouncilName()));
 
         if (ticketCouncilNameOptional.isPresent()) {
             log.error("Ticket council name is already exist");
@@ -89,17 +98,42 @@ public class TicketCouncilServiceImpl implements TicketCouncilService {
      */
     @Override
     public List<TicketCouncilDto> findAllCouncil() {
-        List<TicketCouncil> ticketCouncilList = ticketCouncilRepository.findAll();
+        List<TicketCouncil> ticketCouncilList = new ArrayList<>();
 
-        if (ticketCouncilList != null && !ticketCouncilList.isEmpty()) {
+        Iterable<TicketCouncil> ticketCouncilIterable = ticketCouncilRepository.findAll();
+        ticketCouncilIterable.forEach(ticketCouncilList::add);
 
-            List<TicketCouncilDto> ticketCouncilDtoList = ticketCouncilList.stream()
-                    .map(ticketCouncil -> convertTicketCouncilEntityToDto(ticketCouncil))
+        if (!ticketCouncilList.isEmpty()) {
+            return ticketCouncilList.stream()
+                    .map(this::convertTicketCouncilEntityToDto)
+                    .sorted(((council1, council2) ->
+                            council1.getTicketCouncilName()
+                                    .compareToIgnoreCase(council2.getTicketCouncilName())))
                     .collect(Collectors.toList());
-
-            return ticketCouncilDtoList;
         }
 
+        return Collections.emptyList();
+    }
+
+    public List<TicketCouncilDto> freeTextSearchByName(AdminTextSearchDto adminTextSearchDto) {
+        if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())) {
+
+            List<TicketCouncil> ticketCouncilList = ticketCouncilRepository
+                    .freeTextSearchByName(adminTextSearchDto.getSearchKeyword());
+
+            if (ticketCouncilList != null && !ticketCouncilList.isEmpty()) {
+
+                List<TicketCouncilDto> ticketUserTypeDtoList = ticketCouncilList.stream()
+                        .map(ticketCouncil -> TicketCouncilDto.builder()
+                                .ticketCouncilId(ticketCouncil.getId())
+                                .ticketCouncilName(ticketCouncil.getTicketCouncilName())
+                                .status(ticketCouncil.getStatus())
+                                .build())
+                        .collect(Collectors.toList());
+
+                return ticketUserTypeDtoList;
+            }
+        }
         return Collections.emptyList();
     }
 
@@ -115,6 +149,7 @@ public class TicketCouncilServiceImpl implements TicketCouncilService {
                     .map(ticketDepartment -> TicketDepartmentDto.builder()
                             .ticketDepartmentId(ticketDepartment.getId())
                             .ticketDepartmentName(ticketDepartment.getTicketDepartmentName())
+                            .status(ticketDepartment.getStatus())
                             .build()
                     ).collect(Collectors.toList());
 

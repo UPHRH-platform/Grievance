@@ -36,4 +36,6 @@ public interface IntegrationService {
     Boolean sendMobileOTP(String name, String phoneNumber, String otp);
 
     List<User> getAllUsersByRole(String role);
+
+    List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId);
 }

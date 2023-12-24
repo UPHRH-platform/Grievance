@@ -174,6 +174,8 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("support_email_address","upmedicalfaculty@upsmfac.org");
                     velocityContext.put("support_phone_number","Phone: (0522) 2238846, 2235964, 2235965, 3302100");
                     velocityContext.put("url", feedbackUrl);
+                    velocityContext.put("junk_by", ticket.isJunk());
+                    velocityContext.put("Junk_by_reason", ticket.getJunkByReason());
 
                     // signature
                     createCommonMailSignature(velocityContext);
@@ -208,6 +210,8 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                     velocityContext.put("status", ticket.getStatus().name());
                     velocityContext.put("updated_date", DateUtil.getFormattedDateInString(ticket.getUpdatedDate()));
+                    velocityContext.put("other_by", ticket.getOther());
+                    velocityContext.put("other_by_reason", ticket.getOtherByReason());
                     // signature
                     createCommonMailSignature(velocityContext);
                     // merge mail body
@@ -306,7 +310,14 @@ public class EmailServiceImpl implements EmailService {
     private List<User> getUsersByDepartment(String assignedToId) {
         if (!StringUtils.isBlank(assignedToId)) {
             if (assignedToId.equalsIgnoreCase("-1")) {
-                return userRepository.findByUserDepartment(null);
+                Optional<User> userOptional = userRepository.findByUserDepartment(null);
+
+                if (userOptional.isPresent()) {
+                    log.error("Unable to find admin for -1 assignedTo");
+                    throw new DataUnavailabilityException("Unable to find admin user");
+                }
+                log.info(">>>>>>>>>> assingedTo is {} and user {}", assignedToId, userOptional.get());
+                return Collections.singletonList(userOptional.get());
             }
 
             try {
@@ -317,6 +328,9 @@ public class EmailServiceImpl implements EmailService {
                     log.error("Unable to find assigned to mapping with existing user set");
                     throw new DataUnavailabilityException("Unable to find assigned to mapping with existing user set");
                 }
+
+                log.info(">>>>>>>>>> User details:  user id {}, email {} based on assignedTO {}",
+                        userOptional.get().getId(), userOptional.get().getEmail(), assignedToId);
 
                 return Collections.singletonList(userOptional.get());
             } catch (NumberFormatException e) {
@@ -393,13 +407,33 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    private List<User> findGrivanceNodal() {
+        Optional<UserDepartment> userDepartmentOptional = userDepartmentRepository
+                .findByCouncilNameAndCouncilName("OTHER", "OTHER");
+
+        if (userDepartmentOptional.isPresent()) {
+            Optional<User> userOptional = userRepository.findByUserDepartment(userDepartmentOptional.get());
+
+            if (userOptional.isPresent()) {
+                return Collections.singletonList(userOptional.get());
+            } else {
+                log.error(">>>>>>>>>>>>>>>>>>>>> Unable to find Grivance Nodal");
+            }
+        } else {
+            log.error(">>>>>>>>>>>>>>>>>>>>> Unable to find user department for OTHER concil and OTHER department");
+        }
+
+        return Collections.emptyList();
+    }
+
     /** ununsed method
      * @param details
      * @param ticket
      */
-    private void sendMailToGrievanceNodal(EmailDetails details, Ticket ticket) {
+    @Override
+    public void sendMailToGrievanceNodal(EmailDetails details, Ticket ticket) {
         try {
-            List<User> users = getUsersByDepartment(String.valueOf(-1));
+            List<User> users = findGrivanceNodal();
             if(users == null || users.isEmpty()) {
                 return;
             }
@@ -415,8 +449,11 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("id", ticket.getId());
                         velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                         velocityContext.put("priority", ticket.getPriority());
+                        velocityContext.put("updated_date", DateUtil.getFormattedDateInString(ticket.getUpdatedDate()));
 //                        velocityContext.put("userDepartment", departmentList != null && !departmentList.isEmpty() ? departmentList.get(0).getCode() : "Others");
                         velocityContext.put("status", ticket.getStatus().name());
+                        velocityContext.put("other_by", ticket.getOther());
+                        velocityContext.put("other_by_reason", ticket.getOtherByReason());
                         // signature
                         createCommonMailSignature(velocityContext);
                         // merge mail body

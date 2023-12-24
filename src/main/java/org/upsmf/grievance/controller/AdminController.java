@@ -6,10 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import org.upsmf.grievance.dto.TicketCouncilDto;
-import org.upsmf.grievance.dto.TicketDepartmentDto;
-import org.upsmf.grievance.dto.TicketRequest;
-import org.upsmf.grievance.dto.TicketUserTypeDto;
+import org.upsmf.grievance.dto.*;
 import org.upsmf.grievance.exception.CustomException;
 import org.upsmf.grievance.exception.DataUnavailabilityException;
 import org.upsmf.grievance.exception.TicketException;
@@ -117,6 +114,23 @@ public class AdminController {
         }
     }
 
+    @PostMapping("/ticket/userType/textSearch")
+    public ResponseEntity<List<TicketUserTypeDto>> userTypeFreeTextSearch(@RequestBody AdminTextSearchDto adminTextSearchDto) {
+
+        try {
+            List<TicketUserTypeDto> ticketUserTypeList =  ticketUserTypeService.freeTextSearchByName(adminTextSearchDto);
+
+            return new ResponseEntity<>(ticketUserTypeList, HttpStatus.OK);
+
+        } catch (CustomException e) {
+            log.error("Error in while fetching all ticket user type - at controller");
+            throw new TicketException(e.getMessage(), ErrorCode.TKT_001, "Error while fetching all ticket user type");
+        } catch (Exception e) {
+            log.error("Internal server error while fetching all ticket user type", e);
+            throw new TicketException("Internal server error while fetching all ticket user type", ErrorCode.TKT_002, e.getMessage());
+        }
+    }
+
     /**
      * @param ticketCouncilDto
      * @return
@@ -165,6 +179,23 @@ public class AdminController {
 
         try {
             List<TicketCouncilDto> ticketCouncilDtoList = ticketCouncilService.findAllCouncil();
+
+            return new ResponseEntity<>(ticketCouncilDtoList, HttpStatus.OK);
+
+        } catch (CustomException e) {
+            log.error("Error in while fetching all ticket council data- at controller");
+            throw new TicketException(e.getMessage(), ErrorCode.TKT_001, "Error while fetching all ticket council data");
+        } catch (Exception e) {
+            log.error("Internal server error while fetching all ticket council data", e);
+            throw new TicketException("Internal server error while fetching all ticket council data", ErrorCode.TKT_002, e.getMessage());
+        }
+    }
+
+    @PostMapping("/ticket/council/textSearch")
+    public ResponseEntity<List<TicketCouncilDto>> councilFreeTextSearch(@RequestBody AdminTextSearchDto adminTextSearchDto) {
+
+        try {
+            List<TicketCouncilDto> ticketCouncilDtoList = ticketCouncilService.freeTextSearchByName(adminTextSearchDto);
 
             return new ResponseEntity<>(ticketCouncilDtoList, HttpStatus.OK);
 
@@ -258,6 +289,24 @@ public class AdminController {
         }
     }
 
+    @PostMapping("/ticket/department/textSearch")
+    public ResponseEntity<List<TicketDepartmentDto>> departmentFreeTextSearch(@RequestBody AdminTextSearchDto adminTextSearchDto) {
+
+        try {
+            List<TicketDepartmentDto> ticketDepartmentDtoList = ticketDepartmentService.freeTextSearchByName(adminTextSearchDto);
+
+            return new ResponseEntity<>(ticketDepartmentDtoList, HttpStatus.OK);
+
+        } catch (CustomException e) {
+            log.error("Error in while fetching all ticket department data- at controller");
+            throw new TicketException(e.getMessage(), ErrorCode.TKT_001, "Error while fetching all ticket department data");
+        } catch (Exception e) {
+            log.error("Internal server error while fetching all ticket department data", e);
+            throw new TicketException("Internal server error while fetching all ticket department data", ErrorCode.TKT_002, e.getMessage());
+        }
+    }
+
+
     @PostMapping("/ticket/department/updateActivation")
     public ResponseEntity<Response> updateTicketDepartmentActivation(@RequestBody TicketDepartmentDto ticketDepartmentDto) {
 
@@ -272,5 +321,20 @@ public class AdminController {
         }
         Response response = new Response(HttpStatus.OK.value(), "Ticket department activation status has been updated successfully");
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/ticket/department/getAssignedDepartment")
+    public ResponseEntity getUsersByCouncilDetapartment(@RequestParam Long councilId) {
+        try {
+            List<TicketDepartmentDto> ticketDepartmentDtoList = ticketDepartmentService.getAssignedDepartment(councilId);
+
+            return new ResponseEntity<>(ticketDepartmentDtoList, HttpStatus.OK);
+        } catch (CustomException e) {
+            log.error("Error in while getting assigned department");
+            throw new TicketException(e.getMessage(), ErrorCode.TKT_001, "Error in while getting assigned department");
+        } catch (Exception e) {
+            log.error("Error in while getting assigned department", e);
+            throw new TicketException("Error in while getting assigned department", ErrorCode.TKT_002, e.getMessage());
+        }
     }
 }

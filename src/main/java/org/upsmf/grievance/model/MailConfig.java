@@ -3,6 +3,7 @@ package org.upsmf.grievance.model;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -14,6 +15,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 @Builder
 @Entity
 @Table(name = "mail_config")

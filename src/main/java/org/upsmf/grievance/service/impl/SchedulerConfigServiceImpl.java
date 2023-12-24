@@ -14,6 +14,9 @@ import org.upsmf.grievance.service.SchedulerConfigService;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -44,7 +47,7 @@ public class SchedulerConfigServiceImpl implements SchedulerConfigService {
         if(mailConfigDto == null) {
             throw new InvalidRequestException("Invalid Request");
         }
-        if(mailConfigDto.getId() != null || mailConfigDto.getId() > 0) {
+        if(mailConfigDto.getId() != null && mailConfigDto.getId() > 0) {
             throw new InvalidRequestException("Invalid Request");
         }
         if(mailConfigDto.getAuthorityEmails() == null || mailConfigDto.getAuthorityEmails().isEmpty()) {
@@ -83,20 +86,38 @@ public class SchedulerConfigServiceImpl implements SchedulerConfigService {
     }
 
     private void validateUpdatePayload(MailConfigDto mailConfigDto) {
+        if(mailConfigDto == null) {
+            throw new InvalidRequestException("Invalid Request");
+        }
+        if(mailConfigDto.getId() == null || mailConfigDto.getId() <= 0) {
+            throw new InvalidRequestException("Invalid Request");
+        }
+        if(mailConfigDto.getAuthorityEmails() != null && mailConfigDto.getAuthorityEmails().isEmpty()) {
+            throw new InvalidRequestException("Missing Authority Emails");
+        }
+        if(mailConfigDto.getConfigValue() == null || mailConfigDto.getConfigValue() <= 0) {
+            throw new InvalidRequestException("Invalid Configuration value");
+        }
+        if(mailConfigDto.getUpdatedBy() == null || mailConfigDto.getUpdatedBy() <= 0) {
+            throw new InvalidRequestException("Missing user details");
+        }
     }
 
     @Override
-    public MailConfigDto activateConfigById(Long id, Long userId) {
+    public MailConfigDto activateConfigById(Long id, Boolean active, Long userId) {
         if(id == null || id <= 0) {
             throw new InvalidRequestException("Invalid request");
         }
         if(userId == null || userId <= 0) {
             throw new InvalidRequestException("Invalid request");
         }
+        if(active == null) {
+            active = true;
+        }
         Optional<MailConfig> configById = mailConfigRepository.findById(id);
         if(configById.isPresent()) {
             MailConfig existingConfig = configById.get();
-            existingConfig.setActive(true);
+            existingConfig.setActive(active.booleanValue());
             existingConfig.setUpdatedBy(userId);
             existingConfig.setUpdatedDate(Timestamp.valueOf(LocalDateTime.now()));
             existingConfig = mailConfigRepository.save(existingConfig);
@@ -107,23 +128,14 @@ public class SchedulerConfigServiceImpl implements SchedulerConfigService {
     }
 
     @Override
-    public MailConfigDto deactivateConfigById(Long id, Long userId) {
-        if(id == null || id <= 0) {
-            throw new InvalidRequestException("Invalid request");
+    public List<MailConfigDto> getAll() {
+        Iterable<MailConfig> configIterable = mailConfigRepository.findAll();
+        List<MailConfigDto> configs = new ArrayList<>();
+        Iterator<MailConfig> iterator = configIterable.iterator();
+        while (iterator.hasNext()) {
+            MailConfig mailConfig = iterator.next();
+            configs.add(new MailConfigDto(mailConfig));
         }
-        if(userId == null || userId <= 0) {
-            throw new InvalidRequestException("Invalid request");
-        }
-        Optional<MailConfig> configById = mailConfigRepository.findById(id);
-        if(configById.isPresent()) {
-            MailConfig existingConfig = configById.get();
-            existingConfig.setActive(false);
-            existingConfig.setUpdatedBy(userId);
-            existingConfig.setUpdatedDate(Timestamp.valueOf(LocalDateTime.now()));
-            existingConfig = mailConfigRepository.save(existingConfig);
-            // TODO stop scheduledTaskExecutor
-            return new MailConfigDto(existingConfig);
-        }
-        throw new SchedulerConfigException("Unable to deactivate configuration");
+        return configs;
     }
 }

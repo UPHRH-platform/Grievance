@@ -4,6 +4,8 @@ import org.upsmf.grievance.dto.MailConfigDto;
 import org.upsmf.grievance.dto.SearchMailConfigDto;
 import org.upsmf.grievance.dto.SearchMailConfigResponseDto;
 
+import java.util.List;
+
 public interface SchedulerConfigService {
 
     SearchMailConfigResponseDto searchMailConfig(SearchMailConfigDto searchMailConfigDto);
@@ -12,7 +14,7 @@ public interface SchedulerConfigService {
 
     MailConfigDto update(MailConfigDto mailConfigDto);
 
-    MailConfigDto activateConfigById(Long id, Long userId);
+    MailConfigDto activateConfigById(Long id, Boolean active, Long userId);
 
-    MailConfigDto deactivateConfigById(Long id, Long userId);
+    List<MailConfigDto> getAll();
 }

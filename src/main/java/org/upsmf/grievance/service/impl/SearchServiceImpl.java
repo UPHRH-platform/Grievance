@@ -399,6 +399,8 @@ public class SearchServiceImpl implements SearchService {
                 break;
             case "email":
                 keyValue = "requester_email";
+            case "ownerEmail":
+                keyValue = "owner_email";
                 break;
             case "requesterType":
                 keyValue = "requester_type";
@@ -593,6 +595,12 @@ public class SearchServiceImpl implements SearchService {
                 break;
             case "ticket_department_name":
                 esTicket.setTicketDepartmentName(String.valueOf(entry.getValue()));
+                break;
+            case "reminder_counter":
+                esTicket.setReminderCounter((longValue = ((Number) entry.getValue()).longValue()));
+                break;
+            case "junked_by_name":
+                esTicket.setJunkedByName(String.valueOf(entry.getValue()));
                 break;
         }
     }
@@ -821,6 +829,46 @@ public class SearchServiceImpl implements SearchService {
         timestampSearchQuery.must(fromTimestampMatchQuery);
         finalQuery.must(timestampSearchQuery);
         return finalQuery;
+    }
+
+    @Override
+    public List<Ticket> getAllTicketByIdList(List<Long> ids) {
+        QueryBuilder ticketIdQueryBuilder = QueryBuilders.termsQuery("ticket_id", ids);
+        BoolQueryBuilder ticketBooleanQueryBuilder = QueryBuilders.boolQuery().filter(ticketIdQueryBuilder);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder().query(ticketBooleanQueryBuilder);
+
+        org.elasticsearch.action.search.SearchRequest search =
+                new org.elasticsearch.action.search.SearchRequest("ticket");
+
+        search.searchType(SearchType.QUERY_THEN_FETCH);
+        search.source(searchSourceBuilder);
+
+        log.info(">>>>>>>>>>>> Ticket query for id list - {}", searchSourceBuilder);
+
+        try {
+            SearchResponse searchResponse = esConfig.elasticsearchClient().search(search, RequestOptions.DEFAULT);
+
+            return getTicketDocumentsFromHits(searchResponse.getHits());
+        } catch (IOException e) {
+            log.error("Error while searching ticket by ticket id list", e);
+        }
+
+        return Collections.emptyList();
+    }
+
+
+    private List<Ticket> getTicketDocumentsFromHits(SearchHits hits) {
+        List<Ticket> documents = new ArrayList<>();
+        for (SearchHit hit : hits) {
+            Ticket esTicket = new Ticket();
+            for (Map.Entry entry : hit.getSourceAsMap().entrySet()) {
+                String key = (String) entry.getKey();
+                mapEsTicketDtoToTicketDto(entry, key, esTicket);
+            }
+            documents.add(esTicket);
+        }
+        return documents;
     }
 
     /**
