@@ -174,9 +174,9 @@ public class UserController {
 
     @GetMapping("/usersByCouncilDetapartment")
     public ResponseEntity getUsersByCouncilDetapartment(@RequestParam Long departmentId,
-                                                                @RequestParam Long councilId) {
+                                                                @RequestParam Long councilId, @RequestParam Optional<Boolean> allUser) {
         try {
-            List<UserResponseDto> userList = integrationService.getUserByCouncilAndDepartment(departmentId, councilId);
+            List<UserResponseDto> userList = integrationService.getUserByCouncilAndDepartment(departmentId, councilId, allUser);
 
             return new ResponseEntity<>(userList, HttpStatus.OK);
 

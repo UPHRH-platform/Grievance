@@ -10,6 +10,7 @@ import org.upsmf.grievance.model.OtpRequest;
 import org.upsmf.grievance.model.User;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface IntegrationService {
 
@@ -36,5 +37,5 @@ public interface IntegrationService {
 
     Boolean sendMobileOTP(String name, String phoneNumber, String otp);
 
-    List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId);
+    List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId, Optional<Boolean> allUser);
 }

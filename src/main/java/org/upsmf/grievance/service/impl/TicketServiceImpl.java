@@ -352,6 +352,13 @@ public class TicketServiceImpl implements TicketService {
         }else if (updateTicketRequest.getIsNudged() != null && updateTicketRequest.getIsNudged()
                 && !org.apache.commons.lang.StringUtils.isEmpty(updateTicketRequest.getCc())) {
             sendMailToNodal(updateTicketRequest.getCc(), ticket);
+
+            EmailDetails emailDetails = EmailDetails.builder()
+                    .subject(mailReminderSubject)
+                    .build();
+
+            emailService.sendNudgeMailToGrievanceNodal(emailDetails, ticket);
+
             return ticket;
         } else {
             EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Resolution of Your Grievance - " + curentUpdatedTicket.getTicketId()).recipient(curentUpdatedTicket.getEmail()).build();

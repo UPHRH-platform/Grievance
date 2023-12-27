@@ -533,7 +533,8 @@ public class IntegrationServiceImpl implements IntegrationService {
                 throw new InvalidDataException("Both council and department id are allowed or none");
             }
 
-            if (attributeMap.containsKey("departmentId") && attributeMap.containsKey("councilId")) {
+            if (attributeMap.containsKey("departmentId") && attributeMap.containsKey("councilId")
+                    && attributeMap.get("departmentId") != null && attributeMap.get("councilId") != null) {
                 try {
                     Long departmentId = Long.valueOf(attributeMap.get("departmentId"));
                     Long councilId = Long.valueOf(attributeMap.get("councilId"));
@@ -594,7 +595,7 @@ public class IntegrationServiceImpl implements IntegrationService {
     }
 
     @Override
-    public List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId) {
+    public List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId, Optional<Boolean> allUserOptional) {
         List<UserResponseDto> userResponseDtoList = new ArrayList<>();
 
         try {
@@ -612,9 +613,16 @@ public class IntegrationServiceImpl implements IntegrationService {
                 List<User> userList = userRepository.findAllByUserDepartmentIn(userDepartmentList);
 
                 if (userList != null && !userList.isEmpty()) {
-                    userResponseDtoList = userList.stream()
-                            .map(user -> createUserResponse(user))
-                            .collect(Collectors.toList());
+                    if (allUserOptional.isPresent() && Boolean.TRUE.equals(allUserOptional.get())) {
+                        userResponseDtoList = userList.stream()
+                                .map(user -> createUserResponse(user))
+                                .collect(Collectors.toList());
+                    } else {
+                        userResponseDtoList = userList.stream()
+                                .filter(user -> user.getStatus() == 1) //Used premitive type in entity - validation not needed
+                                .map(user -> createUserResponse(user))
+                                .collect(Collectors.toList());
+                    }
                 }
             }
         } catch (Exception e) {
