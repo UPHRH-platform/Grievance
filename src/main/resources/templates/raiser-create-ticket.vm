@@ -89,7 +89,7 @@
                                                                                         <p>Please be assured that we have registered your grievance (details below), and our team will thoroughly investigate the matter to understand the root cause and identify the best course of action to resolve it. We aim to respond to your complaint within 7 days.</p>
                                                                                         <p>
                                                                                             <div>Grievance ID: <strong>${id}</strong></div>
-                                                                                            <div>Registration Date: <strong>${created_date}</strong></div>
+                                                                                            <div>Date: <strong>${created_date}</strong></div>
                                                                                         </p>
                                                                                         <p>In the meantime, we request your patience and cooperation as we work towards resolving the issue. Your satisfaction is our top priority, and we will do our utmost to rectify the situation to your complete satisfaction.</p>
                                                                                         <p>If you have any supporting documents or relevant information related to your complaint, please feel free to attach them to this email.</p>

@@ -89,7 +89,6 @@
                                                                                         <p>
                                                                                             <div>Grievance ID: <strong>${id}</strong></div>
                                                                                             <div>Date Created: <strong>${created_date}</strong></div>
-                                                                                            <div>Priority: <strong>${priority}</strong></div>
                                                                                             <div>Date of Last Update: <strong>${updated_date}</strong></div>
                                                                                             <div>Status: <strong>${status}</strong></div>
                                                                                             #if (${other_by})

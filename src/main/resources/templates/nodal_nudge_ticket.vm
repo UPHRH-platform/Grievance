@@ -88,7 +88,7 @@
                                                                                         <p>I hope this message finds you well. We would like to draw your attention to a reminder from the UPSMF Secretary urging prompt resolution of a ticket that has been assigned to you. Kindly find the pertinent details below:</p>
                                                                                         <p>
                                                                                             <div>Grievance ID: <strong>${id}</strong></div>
-                                                                                            <div>Registration Date: <strong>${created_date}</strong></div>
+                                                                                            <div>Date: <strong>${created_date}</strong></div>
                                                                                         </p>
                                                                                         <p>Your immediate attention to resolving this matter with high priority is highly appreciated. Please ensure that the application is updated accordingly.</p>
                                                                                         <p>Thank you for your prompt action!</p>
