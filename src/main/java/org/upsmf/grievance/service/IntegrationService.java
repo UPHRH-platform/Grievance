@@ -39,6 +39,4 @@ public interface IntegrationService {
     List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId, Optional<Boolean> allUser);
 
     List<User> getAllUsersByRole(String role);
-
-    List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId);
 }
