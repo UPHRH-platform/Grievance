@@ -200,8 +200,30 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
-    public Map<String, Object> dashboardReportByUserId(Long id) {
-        return null;
+    public List<Ticket> getOpenTicketsByID(Long id) {
+        QueryBuilder ticketIdQueryBuilder = QueryBuilders.matchQuery("assigned_to_id", id);
+        QueryBuilder statusQueryBuilder = QueryBuilders.matchQuery("status", TicketStatus.OPEN.name());
+        BoolQueryBuilder ticketBooleanQueryBuilder = QueryBuilders.boolQuery().must(ticketIdQueryBuilder).must(statusQueryBuilder);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder().query(ticketBooleanQueryBuilder);
+
+        org.elasticsearch.action.search.SearchRequest search =
+                new org.elasticsearch.action.search.SearchRequest("ticket");
+
+        search.searchType(SearchType.QUERY_THEN_FETCH);
+        search.source(searchSourceBuilder);
+
+        log.info(">>>>>>>>>>>> Ticket query for id list - {}", searchSourceBuilder);
+
+        try {
+            SearchResponse searchResponse = esConfig.elasticsearchClient().search(search, RequestOptions.DEFAULT);
+
+            return getTicketDocumentsFromHits(searchResponse.getHits());
+        } catch (IOException e) {
+            log.error("Error while searching ticket by ticket id list", e);
+        }
+
+        return Collections.emptyList();
     }
 
     private void escalatePendingTickets(SearchResponse searchResponse) {

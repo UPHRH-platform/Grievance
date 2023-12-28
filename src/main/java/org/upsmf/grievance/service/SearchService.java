@@ -18,5 +18,5 @@ public interface SearchService {
 
     List<Ticket> getAllTicketByIdList(List<Long> ids);
 
-    Map<String, Object> dashboardReportByUserId(Long id);
+    List<Ticket> getOpenTicketsByID(Long id);
 }

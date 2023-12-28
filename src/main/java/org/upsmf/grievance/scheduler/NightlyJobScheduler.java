@@ -12,6 +12,7 @@ import org.upsmf.grievance.dto.SearchDateRange;
 import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.model.EmailDetails;
 import org.upsmf.grievance.model.User;
+import org.upsmf.grievance.model.es.Ticket;
 import org.upsmf.grievance.service.EmailService;
 import org.upsmf.grievance.service.IntegrationService;
 import org.upsmf.grievance.service.SearchService;
@@ -38,6 +39,9 @@ public class NightlyJobScheduler {
 
     @Value("${subject.daily.report}")
     private String subject;
+
+    @Value("${ticket.aggregator.mail.subject.for.raiser}")
+    private String aggregatorSubject;
 
     @Value("${ticket.escalation.days}")
     private String adminEscalationDays;
@@ -106,9 +110,15 @@ public class NightlyJobScheduler {
                         @Override
                         public void run() {
                             // fetch user data
-                            searchService.dashboardReportByUserId(user.getId());
+                            List<Ticket> openTicketsByID = searchService.getOpenTicketsByID(user.getId());
+                            EmailDetails emailDetails = EmailDetails.builder().recipient(user.getEmail())
+                                    .subject(aggregatorSubject).build();
+                            log.info("Details - "+ user.getEmail() + " "+ "subject - "+ aggregatorSubject);
+                            log.info("open tickets - ", openTicketsByID);
                             // send mail
-                            emailService.sendMailTicketAggregateMailToNodalOfficer(user.getId(), user.getEmail());
+                            if(openTicketsByID.size() > 0) {
+                                emailService.sendMailTicketAggregateMailToNodalOfficer(emailDetails, user, openTicketsByID);
+                            }
                         }
                     });
                 }});
