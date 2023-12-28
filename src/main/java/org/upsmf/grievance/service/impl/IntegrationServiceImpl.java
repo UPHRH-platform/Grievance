@@ -228,7 +228,7 @@ public class IntegrationServiceImpl implements IntegrationService {
 
 
     /**
-     * @param createUserDto
+     * @param attributeMap
      * @return
      */
     private Map<String, String> processUserDepartmentAndCouncil(Map<String, String> attributeMap) {
@@ -957,4 +957,13 @@ public class IntegrationServiceImpl implements IntegrationService {
         }
     }
 
+    @Override
+    public List<User> getAllUsersByRole(String role) {
+        List<User> allActiveUsers = userRepository.findAllActiveUsers();
+        if(allActiveUsers == null) {
+            return new ArrayList<>();
+        }
+        allActiveUsers.stream().filter(x -> Arrays.stream(x.getRoles()).anyMatch(userRole -> userRole == "NODALOFFICER")).collect(Collectors.toList());
+        return allActiveUsers;
+    }
 }

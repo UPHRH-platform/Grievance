@@ -24,18 +24,16 @@ import org.upsmf.grievance.repository.UserDepartmentRepository;
 import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.repository.UserRoleRepository;
 import org.upsmf.grievance.service.EmailService;
-import org.upsmf.grievance.service.TicketDepartmentService;
+import org.upsmf.grievance.service.SearchService;
 import org.upsmf.grievance.util.DateUtil;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import java.io.File;
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 // Annotation
 @Service
@@ -747,6 +745,39 @@ public class EmailServiceImpl implements EmailService {
                 log.info("create ticket mail Sent Successfully...");
 
             });
+        }
+        // Catch block to handle the exceptions
+        catch (Exception e) {
+            log.error("Error while Sending Mail", e);
+        }
+    }
+
+    @Override
+    public void sendMailTicketAggregateMailToNodalOfficer(EmailDetails details, User user,
+                  List<org.upsmf.grievance.model.es.Ticket> openTicketsByID) {
+        try {
+            MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                public void prepare(MimeMessage mimeMessage) throws Exception {
+                    MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+                    message.setTo(details.getRecipient());
+                    message.setSubject(details.getSubject());
+
+                    VelocityContext velocityContext = new VelocityContext();
+                    velocityContext.put("first_name", user.getFirstName());
+                    velocityContext.put("tickets", openTicketsByID.size() > 0? openTicketsByID : null);
+                    log.debug("openTicket size - {}", openTicketsByID.size());
+                    // signature
+                    createCommonMailSignature(velocityContext);
+                    // merge mail body
+                    StringWriter stringWriter = new StringWriter();
+                    velocityEngine.mergeTemplate("templates/nodal_officer_pending_ticket_mail.vm", "UTF-8", velocityContext, stringWriter);
+
+                    message.setText(stringWriter.toString(), true);
+                }
+            };
+            // Sending the mail
+            javaMailSender.send(preparator);
+            log.info("nodal_officer_pending_ticket mail Sent Successfully...");
         }
         // Catch block to handle the exceptions
         catch (Exception e) {

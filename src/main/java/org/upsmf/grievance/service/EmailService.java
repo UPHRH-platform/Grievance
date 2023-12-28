@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.upsmf.grievance.model.AssigneeTicketAttachment;
 import org.upsmf.grievance.model.EmailDetails;
 import org.upsmf.grievance.model.Ticket;
+import org.upsmf.grievance.model.User;
 
 import java.util.List;
 
@@ -28,6 +29,8 @@ public interface EmailService {
     public void sendMailToNodalOfficers(EmailDetails details, Ticket ticket);
 
     void sendMailToRaiserForEscalatedTicket(EmailDetails details, Ticket ticket);
+
+    void sendMailTicketAggregateMailToNodalOfficer(EmailDetails emailDetails, User user, List<org.upsmf.grievance.model.es.Ticket> openTicketsByID);
 
     void sendMailToGrievanceNodal(EmailDetails details, Ticket ticket);
 

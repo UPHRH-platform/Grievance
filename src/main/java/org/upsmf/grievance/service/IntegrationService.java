@@ -6,7 +6,6 @@ import org.springframework.http.ResponseEntity;
 import org.upsmf.grievance.dto.CreateUserDto;
 import org.upsmf.grievance.dto.UpdateUserDto;
 import org.upsmf.grievance.dto.UserResponseDto;
-import org.upsmf.grievance.model.OtpRequest;
 import org.upsmf.grievance.model.User;
 
 import java.util.List;
@@ -38,4 +37,6 @@ public interface IntegrationService {
     Boolean sendMobileOTP(String name, String phoneNumber, String otp);
 
     List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId, Optional<Boolean> allUser);
+
+    List<User> getAllUsersByRole(String role);
 }

@@ -17,4 +17,6 @@ public interface SearchService {
     long escalateTickets(Long epochTime);
 
     List<Ticket> getAllTicketByIdList(List<Long> ids);
+
+    List<Ticket> getOpenTicketsByID(Long id);
 }

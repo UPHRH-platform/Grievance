@@ -43,6 +43,9 @@ public class User {
 
     private String[] roles;
 
+    /*@ElementCollection
+    private List<String> roles;*/
+
 //    @OneToMany(targetEntity = UserDepartment.class, mappedBy = "userId", fetch = FetchType.EAGER)
 //    @Fetch(value = FetchMode.SUBSELECT)
 //    private List<UserDepartment> userDepartment;
