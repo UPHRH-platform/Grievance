@@ -352,6 +352,13 @@ public class TicketServiceImpl implements TicketService {
         }else if (updateTicketRequest.getIsNudged() != null && updateTicketRequest.getIsNudged()
                 && !org.apache.commons.lang.StringUtils.isEmpty(updateTicketRequest.getCc())) {
             sendMailToNodal(updateTicketRequest.getCc(), ticket);
+
+            EmailDetails emailDetails = EmailDetails.builder()
+                    .subject(mailReminderSubject)
+                    .build();
+
+            emailService.sendNudgeMailToGrievanceNodal(emailDetails, ticket);
+
             return ticket;
         } else {
             EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Resolution of Your Grievance - " + curentUpdatedTicket.getTicketId()).recipient(curentUpdatedTicket.getEmail()).build();
@@ -605,7 +612,7 @@ public class TicketServiceImpl implements TicketService {
 //      Calculating junkedBy name for ES record
         if (!org.apache.commons.lang.StringUtils.isBlank(ticket.getJunkedBy())) {
             try {
-                Optional<User> userOptional = getOwner(ticket.getAssignedToId());
+                Optional<User> userOptional = getOwner(ticket.getJunkedBy());
 
                 if (userOptional.isPresent()) {
                     junkByName = userOptional.get().getFirstName() + " " + userOptional.get().getLastname();

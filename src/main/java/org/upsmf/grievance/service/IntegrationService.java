@@ -9,6 +9,7 @@ import org.upsmf.grievance.dto.UserResponseDto;
 import org.upsmf.grievance.model.User;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface IntegrationService {
 
@@ -34,6 +35,8 @@ public interface IntegrationService {
     ResponseEntity<String> login(JsonNode body);
 
     Boolean sendMobileOTP(String name, String phoneNumber, String otp);
+
+    List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId, Optional<Boolean> allUser);
 
     List<User> getAllUsersByRole(String role);
 

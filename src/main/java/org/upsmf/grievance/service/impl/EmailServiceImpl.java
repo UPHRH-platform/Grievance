@@ -700,6 +700,59 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void sendNudgeMailToGrievanceNodal(EmailDetails details, Ticket ticket) {
+        try {
+            List<User> users = findGrivanceNodal();
+
+            if(users == null || users.isEmpty()) {
+                return;
+            }
+
+            users.stream().forEach(user -> {
+                MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                    public void prepare(MimeMessage mimeMessage) throws Exception {
+                        MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+                        message.setTo(user.getEmail());
+                        message.setSubject(details.getSubject());
+
+                        String departmentName = "";
+                        Optional<UserDepartment> userDepartmentOptional = getUserDepartmentByAssignedTo(ticket.getAssignedToId());
+
+                        if (userDepartmentOptional.isPresent()) {
+                            departmentName = userDepartmentOptional.get().getDepartmentName();
+                        }
+
+                        List<Department> departmentList = Department.getById(Integer.parseInt(ticket.getAssignedToId()));
+                        VelocityContext velocityContext = new VelocityContext();
+                        velocityContext.put("first_name", user.getFirstName());
+                        velocityContext.put("id", ticket.getId());
+                        velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
+                        velocityContext.put("priority", ticket.getPriority());
+                        velocityContext.put("department", departmentName);
+                        velocityContext.put("status", ticket.getStatus().name());
+                        velocityContext.put("site_url", siteUrl);
+                        // signature
+                        createCommonMailSignature(velocityContext);
+                        // merge mail body
+                        StringWriter stringWriter = new StringWriter();
+                        velocityEngine.mergeTemplate("templates/nodal_nudge_ticket.vm", "UTF-8", velocityContext, stringWriter);
+
+                        message.setText(stringWriter.toString(), true);
+                    }
+                };
+                // Sending the mail
+                javaMailSender.send(preparator);
+                log.info("create ticket mail Sent Successfully...");
+
+            });
+        }
+        // Catch block to handle the exceptions
+        catch (Exception e) {
+            log.error("Error while Sending Mail", e);
+        }
+    }
+
+    @Override
     public void sendMailTicketAggregateMailToNodalOfficer(EmailDetails details, User user,
                   List<org.upsmf.grievance.model.es.Ticket> openTicketsByID) {
         try {

@@ -89,8 +89,6 @@
                                                                                         <p>
                                                                                             <div>Grievance ID: <strong>${id}</strong></div>
                                                                                             <div>Date Created: <strong>${created_date}</strong></div>
-                                                                                            <div>Priority: <strong>${priority}</strong></div>
-                                                                                            <div>Category: <strong>${department}</strong></div>
                                                                                             <div>Status: <strong>${status}</strong></div>
                                                                                         </p>
                                                                                         <p>You have been selected to handle this ticket based on your expertise and availability. We trust in your ability to provide a timely and effective resolution for the reported issue.</p>
