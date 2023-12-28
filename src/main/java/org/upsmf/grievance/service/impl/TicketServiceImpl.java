@@ -384,6 +384,9 @@ public class TicketServiceImpl implements TicketService {
 
     private void generateFeedbackLinkAndEmail(Ticket curentUpdatedTicket) {
         List<Comments> comments = commentRepository.findAllByTicketId(curentUpdatedTicket.getId());
+        List<AssigneeTicketAttachment> assigneeTicketAttachments = assigneeTicketAttachmentRepository
+                .findByTicketId(curentUpdatedTicket.getId());
+
         Comments latestComment =null;
         if(comments!=null && comments.size() > 0) {
             latestComment = comments.get(comments.size()-1);
@@ -397,7 +400,7 @@ public class TicketServiceImpl implements TicketService {
                 .concat("&phone=").concat(curentUpdatedTicket.getPhone())
                 .concat("&ticketTitle=").concat(curentUpdatedTicket.getDescription());
         EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Resolution of Your Grievance").recipient(curentUpdatedTicket.getEmail()).build();
-        emailService.sendClosedTicketMail(resolutionOfYourGrievance, curentUpdatedTicket, comment, Collections.EMPTY_LIST, link);
+        emailService.sendClosedTicketMail(resolutionOfYourGrievance, curentUpdatedTicket, comment, assigneeTicketAttachments, link);
     }
     private void generateFeedbackLinkAndEmailForJunkTicket(Ticket curentUpdatedTicket) {
         List<Comments> comments = commentRepository.findAllByTicketId(curentUpdatedTicket.getId());

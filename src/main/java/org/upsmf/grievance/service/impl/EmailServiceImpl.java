@@ -127,7 +127,7 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("department", departmentName);
                     velocityContext.put("comment", comment);
                     velocityContext.put("url", feedbackUrl);
-
+                    velocityContext.put("docLinks", attachments);
                     // signature
                     createCommonMailSignature(velocityContext);
                     // merge mail body
@@ -231,7 +231,7 @@ public class EmailServiceImpl implements EmailService {
     private void sendMailToNodalOfficer(EmailDetails details, Ticket ticket) {
         try {
 
-            List<User> users = getUsersByDepartment(ticket.getAssignedToId());
+            List<User> users = getUsersByAssignedId(ticket.getAssignedToId());
             if(users == null || users.isEmpty()) {
                 return;
             }
@@ -282,6 +282,10 @@ public class EmailServiceImpl implements EmailService {
     private Optional<UserDepartment> getUserDepartmentByAssignedTo(String assignedToId) {
         if (!StringUtils.isBlank(assignedToId)) {
             try {
+                if (assignedToId.equalsIgnoreCase("-1")) {
+                    return userDepartmentRepository.findByCouncilNameAndCouncilName("OTHER", "OTHER");
+                }
+
                 Long userId = Long.valueOf(assignedToId);
 
                 Optional<User> userOptional = userRepository.findById(userId);
@@ -304,17 +308,10 @@ public class EmailServiceImpl implements EmailService {
         return Optional.empty();
     }
 
-    private List<User> getUsersByDepartment(String assignedToId) {
+    private List<User> getUsersByAssignedId(String assignedToId) {
         if (!StringUtils.isBlank(assignedToId)) {
             if (assignedToId.equalsIgnoreCase("-1")) {
-                Optional<User> userOptional = userRepository.findByUserDepartment(null);
-
-                if (userOptional.isPresent()) {
-                    log.error("Unable to find admin for -1 assignedTo");
-                    throw new DataUnavailabilityException("Unable to find admin user");
-                }
-                log.info(">>>>>>>>>> assingedTo is {} and user {}", assignedToId, userOptional.get());
-                return Collections.singletonList(userOptional.get());
+                return findGrivanceNodal();
             }
 
             try {
@@ -366,7 +363,7 @@ public class EmailServiceImpl implements EmailService {
 
     private void sendMailToAdmin(EmailDetails details, Ticket ticket) {
         try {
-            List<User> users = getUsersByDepartment(String.valueOf(-1));
+            List<User> users = getUsersByAssignedId(String.valueOf(-1));
             if(users == null || users.isEmpty()) {
                 return;
             }
@@ -612,7 +609,7 @@ public class EmailServiceImpl implements EmailService {
     private void sendNudgeMailToNodalOfficer(EmailDetails details, Ticket ticket) {
         try {
 
-            List<User> users = getUsersByDepartment(ticket.getAssignedToId());
+            List<User> users = getUsersByAssignedId(ticket.getAssignedToId());
             if(users.isEmpty()) {
                 return;
             }
@@ -782,6 +779,72 @@ public class EmailServiceImpl implements EmailService {
         // Catch block to handle the exceptions
         catch (Exception e) {
             log.error("Error while Sending Mail", e);
+        }
+    }
+
+    @Override
+    public void sendUserActivationMail(User user, boolean active) {
+        try {
+            MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                public void prepare(MimeMessage mimeMessage) throws Exception {
+                    MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+                    message.setTo(user.getEmail());
+                    if (active) {
+                        message.setSubject("Your Account is Now Active - Ready to Access");
+                    } else {
+                        message.setSubject("Your Account Deactivated - Action Required");
+                    }
+
+                    VelocityContext velocityContext = new VelocityContext();
+                    velocityContext.put("first_name", user.getFirstName());
+                    // signature
+                    createCommonMailSignature(velocityContext);
+                    // merge mail body
+                    StringWriter stringWriter = new StringWriter();
+                    if (active) {
+                        velocityEngine.mergeTemplate("templates/user-activation.vm", "UTF-8", velocityContext, stringWriter);
+                    } else {
+                        velocityEngine.mergeTemplate("templates/user-deactivation.vm", "UTF-8", velocityContext, stringWriter);
+                    }
+
+                    message.setText(stringWriter.toString(), true);
+                }
+            };
+            javaMailSender.send(preparator);
+            log.info("create ticket mail Sent Successfully...");
+        } catch (Exception e) {
+            log.error("Error while Sending Mail", e);
+        }
+    }
+
+    @Override
+    public void sendUserCreationMail(User user,String password) {
+        try {
+            MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                public void prepare(MimeMessage mimeMessage) throws Exception {
+                    MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+                    message.setTo(user.getEmail());
+                    message.setSubject("Welcome - Your Onboarding is Complete!");
+
+                    VelocityContext velocityContext = new VelocityContext();
+                    velocityContext.put("first_name", user.getFirstName());
+                    velocityContext.put("username", user.getUsername());
+                    velocityContext.put("password", password);
+                    // signature
+                    createCommonMailSignature(velocityContext);
+                    // merge mail body
+                    StringWriter stringWriter = new StringWriter();
+
+                    velocityEngine.mergeTemplate("templates/user-creation.vm", "UTF-8", velocityContext, stringWriter);
+
+                    message.setText(stringWriter.toString(), true);
+                }
+            };
+            javaMailSender.send(preparator);
+            log.info("create ticket mail Sent Successfully...");
+        } catch (Exception e) {
+            e.printStackTrace();
+            log.error("Error while Sending user creation mail", e);
         }
     }
 }

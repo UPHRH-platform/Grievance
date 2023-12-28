@@ -38,10 +38,7 @@ import org.upsmf.grievance.repository.UserDepartmentRepository;
 import org.upsmf.grievance.repository.RoleRepository;
 import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.repository.UserRoleRepository;
-import org.upsmf.grievance.service.EsTicketUpdateService;
-import org.upsmf.grievance.service.IntegrationService;
-import org.upsmf.grievance.service.TicketCouncilService;
-import org.upsmf.grievance.service.TicketDepartmentService;
+import org.upsmf.grievance.service.*;
 import org.upsmf.grievance.util.ErrorCode;
 
 import javax.transaction.Transactional;
@@ -139,6 +136,9 @@ public class IntegrationServiceImpl implements IntegrationService {
     @Autowired
     private EsTicketUpdateService esTicketUpdateService;
 
+    @Autowired
+    private EmailService emailService;
+
     @Override
     public User addUser(User user) {
         return userRepository.save(user);
@@ -213,7 +213,8 @@ public class IntegrationServiceImpl implements IntegrationService {
                     createUserRoleMapping(user, savedUser);
 
                     // send mail with password
-                    sendCreateUserEmail(savedUser.getEmail(), savedUser.getUsername(), generatePassword);
+//                    sendCreateUserEmail(savedUser.getEmail(), savedUser.getUsername(), generatePassword);
+                    emailService.sendUserCreationMail(savedUser, generatePassword);
                     return new ResponseEntity<>(savedUser, HttpStatus.OK);
                 }
                 return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -756,6 +757,7 @@ public class IntegrationServiceImpl implements IntegrationService {
                     );
                     if (response.getStatusCode() == HttpStatus.OK) {
                         userDetails.setStatus(1);
+                        emailService.sendUserActivationMail(userDetails, true);
                         return userRepository.save(userDetails);
                     }
                     throw new RuntimeException("Error in activating user.");
@@ -789,6 +791,7 @@ public class IntegrationServiceImpl implements IntegrationService {
                             new HttpEntity<>(request, headers), String.class);
                     if (response.getStatusCode() == HttpStatus.OK) {
                         userDetails.setStatus(0);
+                        emailService.sendUserActivationMail(userDetails, false);
                         return userRepository.save(userDetails);
                     }
                     throw new RuntimeException("Error in deactivating user.");

@@ -35,4 +35,8 @@ public interface EmailService {
     void sendMailToGrievanceNodal(EmailDetails details, Ticket ticket);
 
     void sendNudgeMailToGrievanceNodal(EmailDetails details, Ticket ticket);
+
+    void sendUserActivationMail(User user, boolean active);
+
+    void sendUserCreationMail(User user,String password);
 }
