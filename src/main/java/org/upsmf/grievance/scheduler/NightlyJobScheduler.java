@@ -8,20 +8,21 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.upsmf.grievance.constants.Constants;
+import org.upsmf.grievance.dto.MailConfigDto;
 import org.upsmf.grievance.dto.SearchDateRange;
 import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.model.EmailDetails;
+import org.upsmf.grievance.model.MailConfig;
 import org.upsmf.grievance.model.User;
 import org.upsmf.grievance.model.es.Ticket;
+import org.upsmf.grievance.repository.MailConfigRepository;
 import org.upsmf.grievance.service.EmailService;
 import org.upsmf.grievance.service.IntegrationService;
 import org.upsmf.grievance.service.SearchService;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Calendar;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 @Component
@@ -48,6 +49,9 @@ public class NightlyJobScheduler {
 
     @Autowired
     private IntegrationService integrationService;
+
+    @Autowired
+    private MailConfigRepository mailConfigRepository;
 
     /**
      * @Scheduled(cron = "${cron.expression}")
@@ -81,9 +85,23 @@ public class NightlyJobScheduler {
     @Scheduled(cron = "${escalation.job.cron.expression}", zone = "Asia/Kolkata")
     public void escalateTickets(){
         log.info("Starting the escalation job");
-        long lastUpdateTimeBeforeEscalation = LocalDateTime.now().minusDays(Integer.parseInt(adminEscalationDays)).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-        long response = searchService.escalateTickets(lastUpdateTimeBeforeEscalation);
-        log.info("No of tickets escalated "+response);
+        List<MailConfigDto> escalationDays = getAll();
+        if(escalationDays == null || escalationDays.isEmpty()) {
+            log.info("Escalation config missing");
+            return;
+        }
+        // assuming there will 1 active config
+        Optional<MailConfigDto> mailConfigDto = escalationDays.stream().filter(x -> x.isActive()).findFirst();
+        if(mailConfigDto.isPresent()) {
+            int escalationPeriodInDays = mailConfigDto.get().getConfigValue();
+            if(escalationPeriodInDays <= 0) {
+                log.info("Escalation config found invalid value - {}", mailConfigDto.get());
+                return;
+            }
+            long lastUpdateTimeBeforeEscalation = LocalDateTime.now().minusDays(escalationPeriodInDays).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            long response = searchService.escalateTickets(lastUpdateTimeBeforeEscalation);
+            log.info("No of tickets escalated "+response);
+        }
     }
 
     /**
@@ -133,5 +151,16 @@ public class NightlyJobScheduler {
             scheduledThreadPoolExecutor.shutdown();
             scheduledThreadPoolExecutor = null;
         }
+    }
+
+    public List<MailConfigDto> getAll() {
+        Iterable<MailConfig> configIterable = mailConfigRepository.findAll();
+        List<MailConfigDto> configs = new ArrayList<>();
+        Iterator<MailConfig> iterator = configIterable.iterator();
+        while (iterator.hasNext()) {
+            MailConfig mailConfig = iterator.next();
+            configs.add(new MailConfigDto(mailConfig));
+        }
+        return configs;
     }
 }

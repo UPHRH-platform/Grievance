@@ -18,7 +18,7 @@ public class MailConfigDto {
     private Long id;
     private String authorityTitle;
     private List<String> authorityEmails;
-    private Long configValue;
+    private Integer configValue;
     private boolean active = true;
     private Long createdBy;
     private Timestamp createdDate;

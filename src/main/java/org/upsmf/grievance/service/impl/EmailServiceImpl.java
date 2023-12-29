@@ -378,8 +378,9 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("first_name", x.getFirstName());
                         velocityContext.put("id", ticket.getId());
                         velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
+                        velocityContext.put("updated_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                         velocityContext.put("priority", ticket.getPriority());
-//                        velocityContext.put("userDepartment", departmentList != null && !departmentList.isEmpty() ? departmentList.get(0).getCode() : "Others");
+                        velocityContext.put("ticket_description", ticket.getDescription());
                         velocityContext.put("status", ticket.getStatus().name());
                         // signature
                         createCommonMailSignature(velocityContext);
@@ -692,6 +693,41 @@ public class EmailServiceImpl implements EmailService {
         }
         // Catch block to handle the exceptions
         catch (Exception e) {
+            log.error("Error while Sending Mail", e);
+        }
+    }
+    public void sendMailToNodalForEscalatedTicket(EmailDetails details, Ticket ticket) {
+        try {
+            List<User> users = getUsersByAssignedId(ticket.getAssignedToId());
+            if (users.isEmpty()) {
+                return;
+            }
+            users.stream().forEach(user -> {
+                MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                    public void prepare(MimeMessage mimeMessage) throws Exception {
+                        MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+                        message.setTo(user.getEmail());
+                        message.setSubject(details.getSubject());
+
+                        VelocityContext velocityContext = new VelocityContext();
+                        velocityContext.put("first_name", user.getFirstName());
+                        velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
+                        velocityContext.put("id", ticket.getId());
+                        // signature
+                        createCommonMailSignature(velocityContext);
+                        // merge mail body
+                        StringWriter stringWriter = new StringWriter();
+                        velocityEngine.mergeTemplate("templates/nodal_escaltion_ticket.vm", "UTF-8", velocityContext, stringWriter);
+
+                        message.setText(stringWriter.toString(), true);
+                    }
+                };
+                // Sending the mail
+                javaMailSender.send(preparator);
+                log.info("nodal escalation ticket mail Sent Successfully...");
+            });
+            // Catch block to handle the exceptions
+        } catch (Exception e) {
             log.error("Error while Sending Mail", e);
         }
     }

@@ -77,6 +77,9 @@ public class SearchServiceImpl implements SearchService {
     @Value("${ticket.escalation.mail.subject.for.raiser}")
     private String ticketEscalationMailSubjectForRaiser;
 
+    @Value("${mail.reminder.subject}")
+    private String mailReminderSubject;
+
     private Map<String, Object> departmentNameResponse = new HashMap<>();
     private Map<String, Object> performanceIndicatorsResponse = new HashMap<>();
     private Map<String, Object> finalResponse = new HashMap<>();
@@ -245,7 +248,11 @@ public class SearchServiceImpl implements SearchService {
     private void notifyRaiser(Long ticketId) {
         org.upsmf.grievance.model.Ticket ticket = ticketService.getTicketById(ticketId);
         EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject(ticketEscalationMailSubjectForRaiser.concat(" - ").concat(String.valueOf(ticket.getId()))).recipient(ticket.getEmail()).build();
+        // send mail to raiser
         emailService.sendMailToRaiserForEscalatedTicket(resolutionOfYourGrievance, ticket);
+        EmailDetails escalationNodalSubject = EmailDetails.builder().subject(mailReminderSubject.concat(" - ").concat(String.valueOf(ticket.getId()))).recipient(ticket.getEmail()).build();
+        // send mail to ticket owner
+        emailService.sendMailToNodalForEscalatedTicket(escalationNodalSubject, ticket);
     }
 
     private SearchResponse getSearchResponseFromES(SearchSourceBuilder searchSourceBuilder) {

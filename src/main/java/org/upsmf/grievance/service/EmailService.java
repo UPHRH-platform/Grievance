@@ -30,6 +30,8 @@ public interface EmailService {
 
     void sendMailToRaiserForEscalatedTicket(EmailDetails details, Ticket ticket);
 
+    void sendMailToNodalForEscalatedTicket(EmailDetails details, Ticket ticket);
+
     void sendMailTicketAggregateMailToNodalOfficer(EmailDetails emailDetails, User user, List<org.upsmf.grievance.model.es.Ticket> openTicketsByID);
 
     void sendMailToGrievanceNodal(EmailDetails details, Ticket ticket);

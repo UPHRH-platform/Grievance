@@ -32,7 +32,7 @@ public class MailConfig {
     private String authorityEmails;
 
     @Column(name = "config_value")
-    private Long configValue;
+    private Integer configValue;
 
     @Column(name = "active")
     private boolean active = true;
