@@ -888,6 +888,9 @@ public class SearchServiceImpl implements SearchService {
                 String key = (String) entry.getKey();
                 mapEsTicketDtoToTicketDto(entry, key, esTicket);
             }
+            if(hit.getId() != null && !hit.getId().isBlank()) {
+                esTicket.setId(hit.getId());
+            }
             documents.add(esTicket);
         }
         return documents;

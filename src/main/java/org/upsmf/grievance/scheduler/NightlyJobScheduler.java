@@ -124,9 +124,9 @@ public class NightlyJobScheduler {
                 }});
             while (finalScheduledThreadPoolExecutor.getQueue().size() > 0) {
                 // do nothing
-                log.info("Queued Tasks in count - {}", finalScheduledThreadPoolExecutor.getQueue().size());
+                log.debug("Queued Tasks in count - {}", finalScheduledThreadPoolExecutor.getQueue().size());
             }
-            log.info("No of tasks competed - {}", finalScheduledThreadPoolExecutor.getCompletedTaskCount());
+            log.debug("No of tasks competed - {}", finalScheduledThreadPoolExecutor.getCompletedTaskCount());
         } catch (Exception e) {
             log.error("error in sending mail ", e);
         } finally {

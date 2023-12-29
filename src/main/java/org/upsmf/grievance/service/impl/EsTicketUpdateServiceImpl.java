@@ -115,14 +115,18 @@ public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
 
 //                        List<org.upsmf.grievance.model.es.Ticket> esTicketList = esTicketRepository.findByTicketIdIn(ids);
                         List<org.upsmf.grievance.model.es.Ticket> esTicketList = searchService.getAllTicketByIdList(ids);
-
+                        log.info(">>>>>>>>>>>>>>>>>>>>>>>>>> es ticket list: " + esTicketList);
                         if (esTicketList != null && !esTicketList.isEmpty()) {
                             for (org.upsmf.grievance.model.es.Ticket ticket : esTicketList) {
-                                String updatedName = updateUserDto.getFirstName() + " " + updateUserDto.getLastName();
-                                ticket.setJunkedByName(updatedName);
+                                // change to omit failure due to old ticket structure
+                                try{
+                                    String updatedName = updateUserDto.getFirstName() + " " + updateUserDto.getLastName();
+                                    ticket.setJunkedByName(updatedName);
+                                    esTicketRepository.save(ticket);
+                                } catch (Exception e){
+                                    log.error("Error in updating name in ticket - {}", e.getLocalizedMessage());
+                                }
                             }
-
-                            esTicketRepository.saveAll(esTicketList);
                         } else {
                             log.warn(">>>>>>>>>>> Marked Junked: Unable to find any ticket to update for ids {}", ids);
                         }
