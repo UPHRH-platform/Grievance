@@ -351,8 +351,7 @@ public class TicketServiceImpl implements TicketService {
             return ticket;
         }else if (updateTicketRequest.getIsNudged() != null && updateTicketRequest.getIsNudged()
                 && !org.apache.commons.lang.StringUtils.isEmpty(updateTicketRequest.getCc())) {
-            sendMailToNodal(updateTicketRequest.getCc(), ticket);
-
+            //sendMailToNodal(updateTicketRequest.getCc(), ticket);
             EmailDetails emailDetails = EmailDetails.builder()
                     .subject(mailReminderSubject)
                     .build();
