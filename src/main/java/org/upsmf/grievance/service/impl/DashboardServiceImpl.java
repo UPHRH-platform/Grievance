@@ -291,8 +291,8 @@ public class DashboardServiceImpl {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode keyPerformanceMatrixNodeData = objectMapper.createObjectNode();
         keyPerformanceMatrixNodeData.put("Total", totalTicketCount);
-        keyPerformanceMatrixNodeData.put("Escalation Percentage", totalTicketCount >= 0 ? BigDecimal.valueOf(totalEscalatedTicketCount).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(totalTicketCount), 2, RoundingMode.HALF_UP).toString().concat("%"):"0%");
-        keyPerformanceMatrixNodeData.put("Nudge Ticket Percentage", totalTicketCount >= 0 ? BigDecimal.valueOf(totalNudgedTicketCount).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(totalTicketCount), 2, RoundingMode.HALF_UP).toString().concat("%"):"0%");
+        keyPerformanceMatrixNodeData.put("Escalation Percentage", totalTicketCount > 0 ? BigDecimal.valueOf(totalEscalatedTicketCount).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(totalTicketCount), 2, RoundingMode.HALF_UP).toString().concat("%"):"0%");
+        keyPerformanceMatrixNodeData.put("Nudge Ticket Percentage", totalTicketCount > 0 ? BigDecimal.valueOf(totalNudgedTicketCount).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(totalTicketCount), 2, RoundingMode.HALF_UP).toString().concat("%"):"0%");
         keyPerformanceMatrixNodeData.put("Open Ticket Gte21", totalOpenTicketCountGte21);
         keyPerformanceMatrixNodeData.put("Turn Around Time", ticketsTurnAroundTimeInDays);
         return keyPerformanceMatrixNodeData;
