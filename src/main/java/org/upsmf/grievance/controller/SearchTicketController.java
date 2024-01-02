@@ -11,6 +11,7 @@ import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.model.reponse.Response;
 import org.upsmf.grievance.model.reponse.TicketResponse;
 import org.upsmf.grievance.service.SearchService;
+import org.upsmf.grievance.service.impl.DashboardServiceImpl;
 
 import java.util.Map;
 
@@ -20,6 +21,9 @@ public class SearchTicketController {
 
     @Autowired
     private SearchService searchService;
+
+    @Autowired
+    private DashboardServiceImpl dashboardService;
 
     @PostMapping("/getAllTickets")
     public ResponseEntity<Response> search(@RequestBody SearchRequest searchRequest) {
@@ -45,7 +49,8 @@ public class SearchTicketController {
     public ResponseEntity<Response> getDashboardReport(@RequestBody SearchRequest searchRequest) {
         Map<String, Object> responseTicket = null;
         try {
-            responseTicket = searchService.dashboardReport(searchRequest);
+            //responseTicket = searchService.dashboardReport(searchRequest);
+            responseTicket = dashboardService.dashboardReport(searchRequest);
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
         }
