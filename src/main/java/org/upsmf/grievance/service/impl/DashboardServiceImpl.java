@@ -410,7 +410,9 @@ public class DashboardServiceImpl {
             return null;
         }
         log.debug("Total ticket found - {}", totalTicket.size());
-        Map<String, Map<String,ObjectNode>> councilDepartmentResolutionMap = new HashMap<>();
+        // create map
+        Map<String, Map<String, ObjectNode>> councilDepartmentResolutionMap = new HashMap<>();
+        // loop through each ticket
         totalTicket.stream().forEach( ticket -> {
             createResolutionMatrixData(date, ticket, councilDepartmentResolutionMap);
         });
@@ -419,9 +421,10 @@ public class DashboardServiceImpl {
 
     private void createResolutionMatrixData(SearchDateRange date, Ticket ticket, Map<String, Map<String, ObjectNode>> councilDepartmentResolutionMap) {
         Map<String, ObjectNode> departmentMap;
-        log.debug("Ticket details - {}", ticket.getId());
         if(ticket.getTicketCouncilName() == null || ticket.getTicketDepartmentName() == null
-                || ticket.getTicketCouncilName().isBlank() || ticket.getTicketDepartmentName().isBlank()) {
+                || ticket.getTicketCouncilName().isBlank() || ticket.getTicketDepartmentName().isBlank()
+                || ticket.getTicketCouncilId() == null || ticket.getTicketCouncilId() <= 0
+                || ticket.getTicketDepartmentId() == null || ticket.getTicketDepartmentId() <= 0) {
             return;
         }
         if(councilDepartmentResolutionMap.containsKey(ticket.getTicketCouncilName())) {
@@ -437,10 +440,13 @@ public class DashboardServiceImpl {
 
     private void createCouncilDepartmentTicketMatrix(SearchDateRange date, Ticket ticket,
              Map<String, ObjectNode> departmentMap, Map<String, Map<String, ObjectNode>> councilDepartmentResolutionMap) {
+        if(departmentMap.containsKey(ticket.getTicketDepartmentName())){
+            return;
+        }
         // create new department map and assign value
         Map<String, Object> searchFilter = new HashMap<>();
-        searchFilter.put("councilId", ticket.getTicketCouncilId());
-        searchFilter.put("departmentId", ticket.getTicketDepartmentId());
+        searchFilter.put("ticket_council_id", ticket.getTicketCouncilId());
+        searchFilter.put("ticket_department_id", ticket.getTicketDepartmentId());
         // get statistics
         ObjectNode ticketAssignmentMatrixReport = createTicketAssignmentMatrixReport(searchFilter, date);
         // get value based on council and department and assign value
@@ -510,7 +516,6 @@ public class DashboardServiceImpl {
         esQuery.must(QueryBuilders.matchQuery("status", ticketStatus.name()));
         // TODO get list of grievance nodal admin
         long nodalAdminId = -1;
-
         esQuery.must(QueryBuilders.matchQuery("assigned_to_id", nodalAdminId));
         return executeQueryForCount(esQuery);
     }
