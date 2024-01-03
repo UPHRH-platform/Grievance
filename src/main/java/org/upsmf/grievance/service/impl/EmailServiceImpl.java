@@ -819,6 +819,39 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void sendMailTicketAggregateMailToSecretary(EmailDetails details, User user,
+                  List<org.upsmf.grievance.model.es.Ticket> openTicketsByID) {
+        try {
+            MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                public void prepare(MimeMessage mimeMessage) throws Exception {
+                    MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+                    message.setTo(details.getRecipient());
+                    message.setSubject(details.getSubject());
+
+                    VelocityContext velocityContext = new VelocityContext();
+                    velocityContext.put("first_name", user.getFirstName());
+                    velocityContext.put("tickets", openTicketsByID.size() > 0? openTicketsByID : null);
+                    log.debug("openTicket size - {}", openTicketsByID.size());
+                    // signature
+                    createCommonMailSignature(velocityContext);
+                    // merge mail body
+                    StringWriter stringWriter = new StringWriter();
+                    velocityEngine.mergeTemplate("templates/nodal_officer_pending_ticket_mail.vm", "UTF-8", velocityContext, stringWriter);
+
+                    message.setText(stringWriter.toString(), true);
+                }
+            };
+            // Sending the mail
+            javaMailSender.send(preparator);
+            log.info("nodal_officer_pending_ticket mail Sent Successfully...");
+        }
+        // Catch block to handle the exceptions
+        catch (Exception e) {
+            log.error("Error while Sending Mail", e);
+        }
+    }
+
+    @Override
     public void sendUserActivationMail(User user, boolean active) {
         try {
             MimeMessagePreparator preparator = new MimeMessagePreparator() {

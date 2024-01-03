@@ -229,6 +229,44 @@ public class SearchServiceImpl implements SearchService {
         return Collections.emptyList();
     }
 
+    @Override
+    public List<Ticket> getOpenTicketsByID(Long id, SearchDateRange dateRange) {
+        BoolQueryBuilder ticketBooleanQueryBuilder = QueryBuilders.boolQuery();
+        if(id != null && id > 0) {
+            QueryBuilder ticketIdQueryBuilder = QueryBuilders.matchQuery("assigned_to_id", id);
+            ticketBooleanQueryBuilder.must(ticketIdQueryBuilder);
+        }
+        if(dateRange != null && dateRange.getFrom() != null && dateRange.getFrom() > 0) {
+            QueryBuilder rangeBuilder = QueryBuilders.rangeQuery("updated_date_ts").gt(dateRange.getFrom());
+            if(dateRange.getTo() != null && dateRange.getTo() > 0){
+                rangeBuilder = QueryBuilders.rangeQuery("updated_date_ts").gt(dateRange.getFrom()).lte(dateRange.getTo());
+            }
+            ticketBooleanQueryBuilder.must(rangeBuilder);
+        }
+        QueryBuilder statusQueryBuilder = QueryBuilders.matchQuery("status", TicketStatus.OPEN.name());
+        ticketBooleanQueryBuilder.must(statusQueryBuilder);
+
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder().query(ticketBooleanQueryBuilder);
+
+        org.elasticsearch.action.search.SearchRequest search =
+                new org.elasticsearch.action.search.SearchRequest("ticket");
+
+        search.searchType(SearchType.QUERY_THEN_FETCH);
+        search.source(searchSourceBuilder);
+
+        log.info(">>>>>>>>>>>> Ticket query for id list - {}", searchSourceBuilder);
+
+        try {
+            SearchResponse searchResponse = esConfig.elasticsearchClient().search(search, RequestOptions.DEFAULT);
+
+            return getTicketDocumentsFromHits(searchResponse.getHits());
+        } catch (IOException e) {
+            log.error("Error while searching ticket by ticket id list", e);
+        }
+
+        return Collections.emptyList();
+    }
+
     private void escalatePendingTickets(SearchResponse searchResponse) {
         Iterator<SearchHit> hits = searchResponse.getHits().iterator();
         TaskExecutor taskExecutor = new ConcurrentTaskScheduler();

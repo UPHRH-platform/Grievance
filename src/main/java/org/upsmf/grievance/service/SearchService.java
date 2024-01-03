@@ -19,4 +19,6 @@ public interface SearchService {
     List<Ticket> getAllTicketByIdList(List<Long> ids);
 
     List<Ticket> getOpenTicketsByID(Long id);
+
+    List<Ticket> getOpenTicketsByID(Long id, SearchDateRange dateRange);
 }

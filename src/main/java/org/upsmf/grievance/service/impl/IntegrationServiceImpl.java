@@ -966,7 +966,7 @@ public class IntegrationServiceImpl implements IntegrationService {
         if(allActiveUsers == null) {
             return new ArrayList<>();
         }
-        allActiveUsers.stream().filter(x -> Arrays.stream(x.getRoles()).anyMatch(userRole -> userRole == "NODALOFFICER")).collect(Collectors.toList());
+        allActiveUsers.stream().filter(x -> Arrays.stream(x.getRoles()).anyMatch(userRole -> userRole == role)).collect(Collectors.toList());
         return allActiveUsers;
     }
 }

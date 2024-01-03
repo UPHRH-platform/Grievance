@@ -20,6 +20,7 @@ import org.upsmf.grievance.service.EmailService;
 import org.upsmf.grievance.service.IntegrationService;
 import org.upsmf.grievance.service.SearchService;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -111,7 +112,6 @@ public class NightlyJobScheduler {
     @Scheduled(cron = "${ticket.aggregator.job.cron.expression}", zone = "Asia/Kolkata")
     public void newTicketsByUser(){
         log.info("Starting the ticket aggregator job");
-        ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = null;
         try {
             // get all Nodal officers
             List<User> allUsersByRole = integrationService.getAllUsersByRole("NODALOFFICER");
@@ -119,37 +119,40 @@ public class NightlyJobScheduler {
                 log.info("Email sending list is empty");
                 return;
             }
-            scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(10);
             // loop to get today's assigned tickets for nodal officer
-            ScheduledThreadPoolExecutor finalScheduledThreadPoolExecutor = scheduledThreadPoolExecutor;
-            allUsersByRole.stream().forEach(user -> {
-                if(!user.getEmail().isBlank()) {
-                    finalScheduledThreadPoolExecutor.execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            // fetch user data
-                            List<Ticket> openTicketsByID = searchService.getOpenTicketsByID(user.getId());
-                            EmailDetails emailDetails = EmailDetails.builder().recipient(user.getEmail())
-                                    .subject(aggregatorSubject).build();
-                            log.info("Details - "+ user.getEmail() + " "+ "subject - "+ aggregatorSubject);
-                            log.info("open tickets - ", openTicketsByID);
-                            // send mail
-                            if(openTicketsByID.size() > 0) {
-                                emailService.sendMailTicketAggregateMailToNodalOfficer(emailDetails, user, openTicketsByID);
-                            }
-                        }
-                    });
+            allUsersByRole.stream().parallel().forEach(user -> {
+                if(user.getStatus() == 1 && user.getEmail() != null && !user.getEmail().isBlank()) {
+                    List<Ticket> openTicketsByID = searchService.getOpenTicketsByID(user.getId());
+                    EmailDetails emailDetails = EmailDetails.builder().recipient(user.getEmail())
+                            .subject(aggregatorSubject).build();
+                    log.info("Details - "+ user.getEmail() + " "+ "subject - "+ aggregatorSubject);
+                    log.info("open tickets - ", openTicketsByID);
+                    // send mail
+                    if(openTicketsByID.size() > 0) {
+                        emailService.sendMailTicketAggregateMailToNodalOfficer(emailDetails, user, openTicketsByID);
+                    }
                 }});
-            while (finalScheduledThreadPoolExecutor.getQueue().size() > 0) {
-                // do nothing
-                log.debug("Queued Tasks in count - {}", finalScheduledThreadPoolExecutor.getQueue().size());
+            // get secretary email
+            List<User> secretaryUserRole = integrationService.getAllUsersByRole("SUPERADMIN");
+            if(secretaryUserRole != null && secretaryUserRole.size() > 0) {
+                secretaryUserRole.stream().forEach(user -> {
+                    if(user.getStatus() == 1 && user.getEmail() != null && !user.getEmail().isBlank()) {
+                        long previousDay = LocalDate.now().minusDays(1).toEpochDay();
+                        SearchDateRange dateRange = SearchDateRange.builder().from(previousDay).to(null).build();
+                        List<Ticket> openTicketsByID = searchService.getOpenTicketsByID(null, dateRange);
+                        EmailDetails emailDetails = EmailDetails.builder().recipient(user.getEmail())
+                                .subject(aggregatorSubject).build();
+                        log.info("Details - " + user.getEmail() + " " + "subject - " + aggregatorSubject);
+                        log.info("open tickets - ", openTicketsByID);
+                        // send mail
+                        if (openTicketsByID.size() > 0) {
+                            emailService.sendMailTicketAggregateMailToSecretary(emailDetails, user, openTicketsByID);
+                        }
+                    }
+                });
             }
-            log.debug("No of tasks competed - {}", finalScheduledThreadPoolExecutor.getCompletedTaskCount());
         } catch (Exception e) {
             log.error("error in sending mail ", e);
-        } finally {
-            scheduledThreadPoolExecutor.shutdown();
-            scheduledThreadPoolExecutor = null;
         }
     }
 
