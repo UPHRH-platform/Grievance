@@ -572,12 +572,12 @@ public class EmailServiceImpl implements EmailService {
                     message.setSubject(details.getSubject());
 
                     VelocityContext velocityContext = new VelocityContext();
-                    velocityContext.put("unassigned", assessmentMatrix.get("unassigned").numberValue());
-                    velocityContext.put("open", assessmentMatrix.get("isOpen").numberValue());
-                    velocityContext.put("closed", assessmentMatrix.get("isClosed").numberValue());
-                    velocityContext.put("escalated", assessmentMatrix.get("isEscalated").numberValue());
-                    velocityContext.put("junk", assessmentMatrix.get("isJunk").numberValue());
-                    velocityContext.put("total", assessmentMatrix.get("total").numberValue());
+                    velocityContext.put("unassigned", assessmentMatrix.get("Unassigned").numberValue());
+                    velocityContext.put("open", assessmentMatrix.get("Is Open").numberValue());
+                    velocityContext.put("closed", assessmentMatrix.get("Is Closed").numberValue());
+                    velocityContext.put("escalated", assessmentMatrix.get("Is Escalated").numberValue());
+                    velocityContext.put("junk", assessmentMatrix.get("Is Junk").numberValue());
+                    velocityContext.put("total", assessmentMatrix.get("Total").numberValue());
                     // signature
                     createCommonMailSignature(velocityContext);
                     // merge mail body

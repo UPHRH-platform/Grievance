@@ -74,7 +74,9 @@ public class DynamicWeeklyJobScheduler {
             service = Executors.newScheduledThreadPool(MAX_EXECUTOR_THREAD);
         }
         // shutdown if service is running
-        service.shutdownNow();
+        if (((ScheduledThreadPoolExecutor) service).getTaskCount() > 0) {
+            service.shutdownNow();
+        }
         // As per requirement, first mail will go without any delay
         // consecutive mail will be sent as per configured value in days
         service.scheduleWithFixedDelay(new Runnable() {
@@ -84,7 +86,6 @@ public class DynamicWeeklyJobScheduler {
                 sendMail(days);
             }
         }, 0, fixedDelaysInDays, TimeUnit.DAYS);
-
         log.info("SchedulerManager:schedule: Started job for sending emails to the users.");
     }
 

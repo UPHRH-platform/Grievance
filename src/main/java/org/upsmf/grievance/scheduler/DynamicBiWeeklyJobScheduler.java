@@ -17,9 +17,12 @@ import org.upsmf.grievance.service.EmailService;
 import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.Calendar;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -72,7 +75,9 @@ public class DynamicBiWeeklyJobScheduler {
             service = Executors.newScheduledThreadPool(MAX_EXECUTOR_THREAD);
         }
         // shutdown if service is running
-        service.shutdownNow();
+        if (((ScheduledThreadPoolExecutor) service).getTaskCount() > 0) {
+            service.shutdownNow();
+        }
         // As per requirement, first mail will go without any delay
         // consecutive mail will be sent as per configured value in days
         service.scheduleWithFixedDelay(new Runnable() {
