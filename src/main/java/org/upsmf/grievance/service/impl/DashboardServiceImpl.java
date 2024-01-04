@@ -19,6 +19,7 @@ import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.enums.TicketPriority;
 import org.upsmf.grievance.enums.TicketStatus;
 import org.upsmf.grievance.model.es.Ticket;
+import org.upsmf.grievance.service.DashboardService;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -32,7 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @Slf4j
-public class DashboardServiceImpl {
+public class DashboardServiceImpl implements DashboardService {
 
     @Autowired
     private EsConfig esConfig;
@@ -47,6 +48,7 @@ public class DashboardServiceImpl {
      * @return
      */
 
+    @Override
     public Map<String, Object> dashboardReport(SearchRequest searchRequest) {
         log.info("Creating dashboard for following request - {}", searchRequest);
         // validate payload and set default for required fields

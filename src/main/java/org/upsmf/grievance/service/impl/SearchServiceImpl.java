@@ -44,33 +44,6 @@ import java.util.*;
 @Slf4j
 public class SearchServiceImpl implements SearchService {
 
-    @Value("${es.default.page.size}")
-    private int defaultPageSize;
-
-    @Value("${pending.21.days}")
-    private long PENDING_21_DAYS;
-
-    @Value("${pending.15.days}")
-    private long PENDING_15_DAYS;
-
-    @Value("${ticket.escalation.days}")
-    private long ticketEscalationDays;
-
-    @Value("${affiliation}")
-    private String AFFILIATION;
-
-    @Value("${exam}")
-    private String EXAM;
-
-   /* @Value("${admission}")
-    private String ADMISSION;*/
-
-    @Value("${registration}")
-    private String REGISTRATION;
-
-    @Value("${assessment}")
-    private String ASSESSMENT;
-
     @Autowired
     private EmailService emailService;
 
@@ -109,74 +82,6 @@ public class SearchServiceImpl implements SearchService {
         Pageable pageable = PageRequest.of(searchRequest.getPage(), searchRequest.getSize(), Sort.Direction.valueOf(searchRequest.getSort().get(keyValue).toUpperCase()), keyValue);
         Page<Ticket> page = esTicketRepository.findAll(pageable);
         return TicketResponse.builder().count(page.getTotalElements()).data(page.getContent()).build();
-    }
-
-
-    // TODO change dashboard logic based on new implementation
-    @Override
-    public Map<String, Object> dashboardReport(SearchRequest searchRequest) {
-        //Create query for search by keyword
-        departmentNameResponse = new HashMap<>();
-        performanceIndicatorsResponse = new HashMap<>();
-        finalResponse = new HashMap<>();
-        totalIsJunk = 0;
-        totalOpenStatus = 0;
-        totalcloseStatus = 0;
-        totalIsEscalated = 0;
-        totalUnassigned = 0;
-        totalOpenTicketGte21 = 0;
-        totalOpenTicketGte15 = 0;
-        totalNudgeTickets = 0;
-        allDepartment = false;
-        totalFinalResponse = false;
-        multiSelectResponse = false;
-        if (searchRequest.getFilter() != null) {
-            List<String> ccList = (List<String>) searchRequest.getFilter().get("ccList");
-            if (ccList != null && ccList.size() > 0) {
-                for (int i = 1; i <= ccList.size(); i++) {
-                    if (ccList.size() == i) {
-                        multiSelectResponse = true;
-                    }
-                    String cc = String.valueOf(ccList.get(i - 1));
-                    if (cc != null && cc.equals(AFFILIATION)) {
-                        getFinalResponse(searchRequest, AFFILIATION);
-                    } else if (cc != null && cc.equals(EXAM)) {
-                        getFinalResponse(searchRequest, EXAM);
-                    }/* else if (cc != null && cc.equals(ADMISSION)) {
-                        getfinalResponse(searchRequest, ADMISSION);
-                    }*/ else if (cc != null && cc.equals(REGISTRATION)) {
-                        getFinalResponse(searchRequest, REGISTRATION);
-                    } else if (cc != null && cc.equals(ASSESSMENT)) {
-                        getFinalResponse(searchRequest, ASSESSMENT);
-                    } else {
-                        allDepartment = true;
-                        getFinalResponse(searchRequest, AFFILIATION);
-                        getFinalResponse(searchRequest, EXAM);
-                        //getfinalResponse(searchRequest, ADMISSION);
-                        getFinalResponse(searchRequest, REGISTRATION);
-                        totalFinalResponse = true;// This flag should be there before last getfinalResponse
-                        getFinalResponse(searchRequest, ASSESSMENT);
-                    }
-                }
-            } else {
-                allDepartment = true;
-                getFinalResponse(searchRequest, AFFILIATION);
-                getFinalResponse(searchRequest, EXAM);
-                //getfinalResponse(searchRequest, ADMISSION);
-                getFinalResponse(searchRequest, REGISTRATION);
-                totalFinalResponse = true;// This flag should be there before last getfinalResponse
-                getFinalResponse(searchRequest, ASSESSMENT);
-            }
-        } else {
-            allDepartment = true;
-            getFinalResponse(searchRequest, AFFILIATION);
-            getFinalResponse(searchRequest, EXAM);
-            //getfinalResponse(searchRequest, ADMISSION);
-            getFinalResponse(searchRequest, REGISTRATION);
-            totalFinalResponse = true;// This flag should be there before last getfinalResponse
-            getFinalResponse(searchRequest, ASSESSMENT);
-        }
-        return finalResponse;
     }
 
     @Override
@@ -303,115 +208,6 @@ public class SearchServiceImpl implements SearchService {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return searchResponse;
-    }
-
-    private void getFinalResponse(SearchRequest searchRequest, String cc) {
-        SearchResponse searchJunkResponse = getDashboardSearchResponse(searchRequest, "isJunk", cc, null);
-        SearchResponse searchOpenStatusResponse = getDashboardSearchResponse(searchRequest, "openStatus", cc, null);
-        SearchResponse searchClosedStatusResponse = getDashboardSearchResponse(searchRequest, "closedStatus", cc, null);
-        SearchResponse searchTurnAroundStatusResponse = getDashboardSearchResponse(searchRequest, "closedStatus", cc, null);
-        SearchResponse searchIsEsclatedResponse = getDashboardSearchResponse(searchRequest, "isEscalated", cc, null);
-        SearchResponse searchUnassignedResponse = getDashboardSearchResponse(searchRequest, "openStatus", "-1", null);
-        SearchResponse searchOpenTicketsGte21Response = getDashboardSearchResponse(searchRequest, "openStatus", cc, "isGte21");
-        SearchResponse searchOpenTicketsGte15Response = getDashboardSearchResponse(searchRequest, "openStatus", cc, "isGte15");
-        SearchResponse searchPriorityResponse = getDashboardSearchResponse(searchRequest, "highPriority", cc, null);
-
-        Map<String, Object> response = new HashMap<>();
-        totalIsJunk = totalIsJunk + searchJunkResponse.getHits().getTotalHits().value;
-        totalOpenStatus = totalOpenStatus + searchOpenStatusResponse.getHits().getTotalHits().value;
-        totalcloseStatus = totalcloseStatus + searchClosedStatusResponse.getHits().getTotalHits().value;
-        totalIsEscalated = totalIsEscalated + searchIsEsclatedResponse.getHits().getTotalHits().value;
-        totalUnassigned = searchUnassignedResponse.getHits().getTotalHits().value;
-        totalNudgeTickets = totalNudgeTickets + searchPriorityResponse.getHits().getTotalHits().value;
-        totalOpenTicketGte21 = totalOpenTicketGte21 + searchOpenTicketsGte21Response.getHits().getTotalHits().value;
-        long totalTicketsCount = searchJunkResponse.getHits().getTotalHits().value + searchOpenStatusResponse.getHits().getTotalHits().value
-                + searchClosedStatusResponse.getHits().getTotalHits().value + searchIsEsclatedResponse.getHits().getTotalHits().value
-                + searchOpenTicketsGte15Response.getHits().getTotalHits().value + searchUnassignedResponse.getHits().getTotalHits().value;
-        response.put(Constants.TOTAL_TICKETS, totalTicketsCount);
-        response.put(Constants.IS_JUNK, searchJunkResponse.getHits().getTotalHits().value);
-        response.put(Constants.IS_OPEN, searchOpenStatusResponse.getHits().getTotalHits().value);
-        response.put(Constants.IS_CLOSED, searchClosedStatusResponse.getHits().getTotalHits().value);
-        response.put(Constants.IS_ESCALATED, searchIsEsclatedResponse.getHits().getTotalHits().value);
-        response.put(Constants.UNASSIGNED, searchUnassignedResponse.getHits().getTotalHits().value);
-        response.put(Constants.OPEN_TICKET_GTE15, searchOpenTicketsGte15Response.getHits().getTotalHits().value);
-
-        if (cc.equals(ASSESSMENT)) {
-            departmentNameResponse.put(Constants.ASSESSMENT_DEPARTMENT, response);
-        } else if (cc.equals(AFFILIATION)) {
-            departmentNameResponse.put(Constants.AFFILIATION_NAME, response);
-        } else if (cc.equals(EXAM)) {
-            departmentNameResponse.put(Constants.EXAM_NAME, response);
-        } else if (cc.equals(REGISTRATION)) {
-            departmentNameResponse.put(Constants.REGISTRATION_NAME, response);
-        } /*else if (cc.equals(ADMISSION)) {
-            departmentNameResponse.put(Constants.ADMISSION_NAME, response);
-        }*/
-        if (totalFinalResponse) {
-            getResponse();
-        }
-        if (multiSelectResponse) {
-            getResponse();
-        }
-        finalResponse.put(Constants.RESOLUTION_MATRIX, departmentNameResponse);
-    }
-
-    private void getResponse() {
-        Map<String, Object> response = new HashMap<>();
-        long totalTicketsCount = totalIsJunk + totalIsEscalated + totalOpenStatus + totalcloseStatus + totalUnassigned;
-        response.put(Constants.TOTAL_TICKETS, totalTicketsCount);
-        response.put(Constants.IS_JUNK, totalIsJunk);
-        response.put(Constants.IS_OPEN, totalOpenStatus);
-        response.put(Constants.IS_CLOSED, totalcloseStatus);
-        response.put(Constants.IS_ESCALATED, totalIsEscalated);
-        response.put(Constants.UNASSIGNED, totalUnassigned);
-        finalResponse.put(Constants.ASSESSMENT_MATRIX, response);
-
-        performanceIndicatorsResponse = new HashMap<>();
-        performanceIndicatorsResponse.put(Constants.TURN_AROUND_TIME, 0 + " days");
-        int esclationPercentage = 0;
-        int nudgePercentage = 0;
-        if(totalTicketsCount != 0){
-            esclationPercentage = (int) Math.round((double) (totalIsEscalated / totalTicketsCount) * 100);
-            nudgePercentage = (int) Math.round((double) (totalNudgeTickets) / totalTicketsCount * 100);
-        }
-        performanceIndicatorsResponse.put(Constants.ESCLATION_PERCENTAGE, esclationPercentage + "%");
-        performanceIndicatorsResponse.put(Constants.NUDGE_TICKET_PERCENTAGE, nudgePercentage + "%");
-        performanceIndicatorsResponse.put(Constants.OPEN_TICKET_GTE21, totalOpenTicketGte21);
-        finalResponse.put(Constants.PERFORMANCE_INDICATORS, performanceIndicatorsResponse);
-    }
-
-    private SearchResponse getDashboardSearchResponse(SearchRequest searchRequest, String reportType, String cc, String flag) {
-        SearchResponse searchResponse;
-        BoolQueryBuilder finalQuery = QueryBuilders.boolQuery();
-        if (flag != null && flag.equals("isGte21")) {
-            finalQuery = getGte21DaysQuery(searchRequest, finalQuery);
-        } else if (flag != null && flag.equals("isGte15")) {
-            finalQuery = getGte15DaysQuery(searchRequest, finalQuery);
-        } else {
-            finalQuery = getDateRangeQuery(searchRequest, finalQuery);
-        }
-        finalQuery = getCCRangeQuery(cc, finalQuery);
-        if (reportType.equals("isJunk")) {
-            finalQuery = getJunkQuery(true, finalQuery);
-        } else if (reportType.equals("openStatus")) {
-            List<String> list = new ArrayList<>();
-            list.add("OPEN");
-            finalQuery = getStatusQuery(list, finalQuery);
-        } else if (reportType.equals("closedStatus")) {
-            List<String> list = new ArrayList<>();
-            list.add("CLOSED");
-            finalQuery = getStatusQuery(list, finalQuery);
-            finalQuery = getJunkQuery(false, finalQuery);
-        } else if (reportType.equals("isEscalated")) {
-            finalQuery = getEscalatedTicketsQuery(true, finalQuery);
-        } else if (reportType.equals("highPriority")) {
-            finalQuery = getPriority("HIGH", finalQuery);
-        }
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
-                .query(finalQuery);
-
-        searchResponse = getSearchResponseFromES(searchSourceBuilder);
         return searchResponse;
     }
 
@@ -877,24 +673,6 @@ public class SearchServiceImpl implements SearchService {
             timestampSearchQuery.must(fromTimestampMatchQuery);
             finalQuery.must(timestampSearchQuery);
         }
-        return finalQuery;
-    }
-
-    private BoolQueryBuilder getGte15DaysQuery(SearchRequest searchRequest, BoolQueryBuilder finalQuery) {
-        Instant currentTimestamp = Instant.now();
-        RangeQueryBuilder fromTimestampMatchQuery = QueryBuilders.rangeQuery("created_date_ts").lte(currentTimestamp.minus(PENDING_15_DAYS, ChronoUnit.DAYS).toEpochMilli());
-        BoolQueryBuilder timestampSearchQuery = QueryBuilders.boolQuery();
-        timestampSearchQuery.must(fromTimestampMatchQuery);
-        finalQuery.must(timestampSearchQuery);
-        return finalQuery;
-    }
-
-    private BoolQueryBuilder getGte21DaysQuery(SearchRequest searchRequest, BoolQueryBuilder finalQuery) {
-        Instant currentTimestamp = Instant.now();
-        RangeQueryBuilder fromTimestampMatchQuery = QueryBuilders.rangeQuery("created_date_ts").lte(currentTimestamp.minus(PENDING_21_DAYS, ChronoUnit.DAYS).toEpochMilli());
-        BoolQueryBuilder timestampSearchQuery = QueryBuilders.boolQuery();
-        timestampSearchQuery.must(fromTimestampMatchQuery);
-        finalQuery.must(timestampSearchQuery);
         return finalQuery;
     }
 

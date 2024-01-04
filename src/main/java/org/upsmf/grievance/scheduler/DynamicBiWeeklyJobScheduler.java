@@ -11,8 +11,8 @@ import org.upsmf.grievance.constants.Constants;
 import org.upsmf.grievance.dto.SearchDateRange;
 import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.model.EmailDetails;
+import org.upsmf.grievance.service.DashboardService;
 import org.upsmf.grievance.service.EmailService;
-import org.upsmf.grievance.service.SearchService;
 
 import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
@@ -20,14 +20,13 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 @Component
 @Slf4j
 public class DynamicBiWeeklyJobScheduler {
     @Autowired
-    private SearchService searchService;
+    private DashboardService dashboardService;
 
     @Autowired
     private EmailService emailService;
@@ -68,16 +67,12 @@ public class DynamicBiWeeklyJobScheduler {
     @Synchronized
     public void schedule(int fixedDelaysInDays) {
         log.info("SchedulerManager:schedule: Started scheduler job for email notifications");
-        // Today's Date Calculation
-        Calendar todayCal = Calendar.getInstance();
-        todayCal.setTime(new Date());
-        log.debug("Today's Calendar Date : " + todayCal.getTime());
-        // Next Scheduler Run Date & Time Calculation
-        //Calendar incompleteCoursesTargetCal = calculateTargetCalender(todayCal, 6,12);
-        // shutdown if service is running
-        if (((ScheduledThreadPoolExecutor) service).getTaskCount() > 0) {
-            service.shutdownNow();
+        if(service == null) {
+            log.info("configuring task executor");
+            service = Executors.newScheduledThreadPool(MAX_EXECUTOR_THREAD);
         }
+        // shutdown if service is running
+        service.shutdownNow();
         // As per requirement, first mail will go without any delay
         // consecutive mail will be sent as per configured value in days
         service.scheduleWithFixedDelay(new Runnable() {
@@ -116,7 +111,7 @@ public class DynamicBiWeeklyJobScheduler {
         SearchRequest searchRequest = new SearchRequest();
         searchRequest.setDate(SearchDateRange.builder().to(Calendar.getInstance().getTimeInMillis())
                 .from(LocalDateTime.now().minusDays(14).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()).build());
-        Map<String, Object> response = searchService.dashboardReport(searchRequest);
+        Map<String, Object> response = dashboardService.dashboardReport(searchRequest);
         log.info("Response " + response);
 
         ObjectMapper objectMapper = new ObjectMapper();

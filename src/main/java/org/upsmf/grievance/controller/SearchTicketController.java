@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.model.reponse.Response;
 import org.upsmf.grievance.model.reponse.TicketResponse;
+import org.upsmf.grievance.service.DashboardService;
 import org.upsmf.grievance.service.SearchService;
-import org.upsmf.grievance.service.impl.DashboardServiceImpl;
 
 import java.util.Map;
 
@@ -23,7 +23,7 @@ public class SearchTicketController {
     private SearchService searchService;
 
     @Autowired
-    private DashboardServiceImpl dashboardService;
+    private DashboardService dashboardService;
 
     @PostMapping("/getAllTickets")
     public ResponseEntity<Response> search(@RequestBody SearchRequest searchRequest) {
@@ -49,7 +49,6 @@ public class SearchTicketController {
     public ResponseEntity<Response> getDashboardReport(@RequestBody SearchRequest searchRequest) {
         Map<String, Object> responseTicket = null;
         try {
-            //responseTicket = searchService.dashboardReport(searchRequest);
             responseTicket = dashboardService.dashboardReport(searchRequest);
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
