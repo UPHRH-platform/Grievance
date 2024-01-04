@@ -53,20 +53,6 @@ public class SearchServiceImpl implements SearchService {
     @Value("${mail.reminder.subject}")
     private String mailReminderSubject;
 
-    private Map<String, Object> departmentNameResponse = new HashMap<>();
-    private Map<String, Object> performanceIndicatorsResponse = new HashMap<>();
-    private Map<String, Object> finalResponse = new HashMap<>();
-    private Boolean allDepartment = false;
-    private Boolean totalFinalResponse = false;
-    private Boolean multiSelectResponse = false;
-    private long totalIsJunk = 0;
-    private long totalOpenStatus = 0;
-    private long totalcloseStatus = 0;
-    private long totalIsEscalated = 0;
-    private long totalUnassigned = 0;
-    private long totalNudgeTickets = 0;
-    private long totalOpenTicketGte15 = 0;
-    private long totalOpenTicketGte21 = 0;
     @Autowired
     private TicketRepository esTicketRepository;
     @Autowired
@@ -465,6 +451,8 @@ public class SearchServiceImpl implements SearchService {
             case "junked_by_name":
                 esTicket.setJunkedByName(String.valueOf(entry.getValue()));
                 break;
+            default:
+                break;
         }
     }
 
@@ -474,24 +462,34 @@ public class SearchServiceImpl implements SearchService {
         if (searchRequest.getSearchKeyword() != null && !searchRequest.getSearchKeyword().isBlank()) {
             RegexpQueryBuilder firstNameKeywordMatchQuery = QueryBuilders.regexpQuery("requester_first_name", ".*" + searchRequest.getSearchKeyword().toLowerCase() + ".*");
             RegexpQueryBuilder lastNameKeywordMatchQuery = QueryBuilders.regexpQuery("requester_last_name", ".*" + searchRequest.getSearchKeyword().toLowerCase() + ".*");
-            RegexpQueryBuilder phoneKeywordMatchQuery = QueryBuilders.regexpQuery("requester_phone", ".*" + searchRequest.getSearchKeyword().toLowerCase() + ".*");
-            RegexpQueryBuilder emailKeywordMatchQuery = QueryBuilders.regexpQuery("requester_email", ".*" + searchRequest.getSearchKeyword().toLowerCase() + ".*");
             RegexpQueryBuilder escalatedDateKeywordMatchQuery = QueryBuilders.regexpQuery("escalated_date", ".*" + searchRequest.getSearchKeyword().toLowerCase() + ".*");
-            WildcardQueryBuilder requesterTypeKeywordMatchQuery = QueryBuilders.wildcardQuery("requester_type.keyword", "*"+searchRequest.getSearchKeyword().toUpperCase()+"*");
+            RegexpQueryBuilder ticketUserTypeNameKeywordMatchQuery = QueryBuilders.regexpQuery("ticket_user_type_name", ".*"+searchRequest.getSearchKeyword().toLowerCase()+".*");
+            RegexpQueryBuilder ticketCouncilNameKeywordMatchQuery = QueryBuilders.regexpQuery("ticket_council_name", ".*"+searchRequest.getSearchKeyword().toLowerCase()+".*");
+            RegexpQueryBuilder ticketDepartmentNameKeywordMatchQuery = QueryBuilders.regexpQuery("ticket_department_name", ".*"+searchRequest.getSearchKeyword().toLowerCase()+".*");
+            RegexpQueryBuilder junkedByKeywordMatchQuery = QueryBuilders.regexpQuery("junked_by_name", ".*"+searchRequest.getSearchKeyword().toLowerCase()+".*");
             RegexpQueryBuilder createdDateKeywordMatchQuery = QueryBuilders.regexpQuery("created_date", ".*" + searchRequest.getSearchKeyword().toLowerCase() + ".*");
             RegexpQueryBuilder assignedToNameKeywordMatchQuery = QueryBuilders.regexpQuery("assigned_to_name", ".*" + searchRequest.getSearchKeyword().toLowerCase() + ".*");
 
             BoolQueryBuilder keywordSearchQuery = QueryBuilders.boolQuery();
-            keywordSearchQuery.should(lastNameKeywordMatchQuery).should(escalatedDateKeywordMatchQuery).should(requesterTypeKeywordMatchQuery).should(createdDateKeywordMatchQuery).should(assignedToNameKeywordMatchQuery);
+            keywordSearchQuery.should(lastNameKeywordMatchQuery)
+                    .should(escalatedDateKeywordMatchQuery)
+                    .should(ticketUserTypeNameKeywordMatchQuery)
+                    .should(ticketCouncilNameKeywordMatchQuery)
+                    .should(ticketDepartmentNameKeywordMatchQuery)
+                    .should(createdDateKeywordMatchQuery)
+                    .should(assignedToNameKeywordMatchQuery);
+            if(searchRequest.getIsJunk().booleanValue()) {
+                keywordSearchQuery.should(junkedByKeywordMatchQuery);
+            }
             try {
                 Integer intValue = Integer.parseInt(searchRequest.getSearchKeyword());
                 MatchQueryBuilder ticketIdKeywordMatchQuery = QueryBuilders.matchQuery("ticket_id",  intValue);
                 keywordSearchQuery.should(ticketIdKeywordMatchQuery);
             } catch (NumberFormatException e) {
-                log.error("unable to parse value ", e);
+                log.error("search string is not INTEGER - {} ", searchRequest.getSearchKeyword());
             }
 
-            keywordSearchQuery.should(firstNameKeywordMatchQuery).should(phoneKeywordMatchQuery).should(emailKeywordMatchQuery);
+            keywordSearchQuery.should(firstNameKeywordMatchQuery);
             finalQuery.must(keywordSearchQuery);
         }
         if(searchRequest.getPriority() != null) {
