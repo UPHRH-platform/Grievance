@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.upsmf.grievance.dto.TicketAuditDto;
 import org.upsmf.grievance.dto.TicketRequest;
 import org.upsmf.grievance.dto.UpdateTicketRequest;
 import org.upsmf.grievance.enums.TicketPriority;
@@ -20,6 +21,7 @@ import org.upsmf.grievance.repository.*;
 import org.upsmf.grievance.repository.es.TicketRepository;
 import org.upsmf.grievance.service.EmailService;
 import org.upsmf.grievance.service.OtpService;
+import org.upsmf.grievance.service.TicketAuditService;
 import org.upsmf.grievance.service.TicketService;
 import org.upsmf.grievance.util.DateUtil;
 
@@ -81,6 +83,9 @@ public class TicketServiceImpl implements TicketService {
     @Autowired
     private ObjectMapper mapper;
 
+    @Autowired
+    private TicketAuditService ticketAuditService;
+
     /**
      *
      * @param ticket
@@ -90,6 +95,7 @@ public class TicketServiceImpl implements TicketService {
     public Ticket saveWithAttachment(Ticket ticket, List<String> attachments) {
         // save ticket in postgres
         org.upsmf.grievance.model.Ticket psqlTicket = ticketRepository.save(ticket);
+        auditTicketSave(psqlTicket);
         // update attachments if present
         if(attachments != null) {
             for(String url : attachments) {
@@ -105,6 +111,20 @@ public class TicketServiceImpl implements TicketService {
         // save ticket in ES
         esTicketRepository.save(esticket);
         return psqlTicket;
+    }
+
+    /**
+     * @param ticket
+     */
+    private void auditTicketSave(@NonNull Ticket ticket) {
+        TicketAuditDto ticketAuditDto = TicketAuditDto.builder()
+                .createdBy(ticket.getEmail())
+                .ticketId(ticket.getId())
+                .remark("New ticket")
+                .updatedTime(ticket.getCreatedDate())
+                .build();
+
+        ticketAuditService.saveTicketAudit(ticketAuditDto);
     }
 
     @Override
@@ -454,12 +474,37 @@ public class TicketServiceImpl implements TicketService {
     private void setUpdateTicket(UpdateTicketRequest updateTicketRequest, Ticket ticket) throws Exception {
         // TODO check request role and permission
 
+        TicketAuditDto ticketAuditDto = TicketAuditDto.builder()
+                .createdBy(ticket.getEmail())
+                .updatedBy(updateTicketRequest.getRequestedBy())
+                .ticketId(ticket.getId())
+                .build();
+
+        if (updateTicketRequest.getRequestedBy() != null && !updateTicketRequest.getRequestedBy().isBlank()) {
+            Optional<User> userOptional = userRepository.findByKeycloakId(updateTicketRequest.getRequestedBy());
+
+            if (userOptional.isPresent()) {
+                ticketAuditDto.setUpdatedBy(userOptional.get().getEmail());
+                ticketAuditDto.setUpdatedByUserId(userOptional.get().getId().toString());  //id is primary key of user so null check has been skipped.
+            }
+        }
+
         if(updateTicketRequest.getStatus()!=null) {
+            ticketAuditDto.setAttribute("STATUS");
+            updateTicketAudit(ticketAuditDto, ticket.getStatus().name(),
+                    updateTicketRequest.getStatus().name(), "Ticket status has been updated");
+
             ticket.setStatus(updateTicketRequest.getStatus());
         }
 
         if (updateTicketRequest.getIsNudged() != null && updateTicketRequest.getIsNudged()){
             if (ticket.getReminderCounter() != null){
+                ticketAuditDto.setAttribute("REMINDER_COUNT");
+
+                updateTicketAudit(ticketAuditDto, ticket.getReminderCounter().toString(),
+                        String.valueOf(ticket.getReminderCounter() + 1),
+                        "Ticket reminder value has been updated");
+
                 ticket.setReminderCounter(ticket.getReminderCounter() + 1);
             } else {
                 ticket.setReminderCounter(0L);
@@ -472,34 +517,90 @@ public class TicketServiceImpl implements TicketService {
             Optional<User> userOptional = getOwner(ticket.getAssignedToId());
 
             if (userOptional.isPresent()) {
+                ticketAuditDto.setAttribute("OWNER_MAIL");
+                updateTicketAudit(ticketAuditDto, ticket.getOwnerEmail(),
+                        userOptional.get().getEmail(),
+                        "Ticket owner has been changed");
+
                 ticket.setOwnerEmail(userOptional.get().getEmail());
             }
 
             if ("-1".equalsIgnoreCase(updateTicketRequest.getCc())) {
+                ticketAuditDto.setAttribute("COUNCIL");
+                updateTicketAudit(ticketAuditDto,
+                        ticket.getTicketCouncil() != null ? ticket.getTicketCouncil().getTicketCouncilName() : null,
+                        "OTHER",
+                        "Ticket council assigned to other");
+
+                ticketAuditDto.setAttribute("DEPARTMENT");
+                updateTicketAudit(ticketAuditDto,
+                        ticket.getTicketDepartment() != null ? ticket.getTicketDepartment().getTicketDepartmentName() : null,
+                        "OTHER",
+                        "Ticket department assigned to other");
+
                 updateCouncilDepartmentForOther(ticket);
             }
         }
 
         if(updateTicketRequest.getPriority()!=null) {
+            ticketAuditDto.setAttribute("PRIORITY");
+            updateTicketAudit(ticketAuditDto, ticket.getPriority() != null ? ticket.getPriority().name() : "",
+                    updateTicketRequest.getPriority().name(),
+                    "Ticket priority value has been updated");
+
             ticket.setPriority(updateTicketRequest.getPriority());
         }
 
         if (Boolean.TRUE.equals(updateTicketRequest.getIsOther())) {
+            ticketAuditDto.setAttribute("IS_OTHER");
+            updateTicketAudit(ticketAuditDto, ticket.getOther() != null ? ticket.getOther().toString() : "" ,
+                    Boolean.TRUE.toString(),
+                    "Ticket set other value has been updated");
+
             ticket.setOther(updateTicketRequest.getIsOther());
+
+            ticketAuditDto.setAttribute("OTHER_BY_REASON");
+            updateTicketAudit(ticketAuditDto, ticket.getOtherByReason() != null ? ticket.getOtherByReason() : "" ,
+                    updateTicketRequest.getOtherByReason(),
+                    "Ticket otherBy reason  has been updated");
+
             ticket.setOtherByReason(updateTicketRequest.getOtherByReason());
         }
 
         if(Boolean.TRUE.equals(updateTicketRequest.getIsJunk())) {
+            ticketAuditDto.setAttribute("IS_JUNK");
+            updateTicketAudit(ticketAuditDto, String.valueOf(ticket.isJunk()) ,
+                    Boolean.TRUE.toString(),
+                    "Ticket junk status has been updated");
+
             ticket.setJunk(updateTicketRequest.getIsJunk());
+
+            ticketAuditDto.setAttribute("JUNK_BY_REASON");
+            updateTicketAudit(ticketAuditDto, ticket.getJunkByReason() != null ? ticket.getJunkByReason() : "" ,
+                    updateTicketRequest.getJunkByReason(),
+                    "Ticket junkBy reason has been updated");
+
             ticket.setJunkByReason(updateTicketRequest.getJunkByReason());
 
             if (updateTicketRequest.getRequestedBy() == null || updateTicketRequest.getRequestedBy().isBlank()) {
+
+                ticketAuditDto.setAttribute("JUNKED_BY");
+                updateTicketAudit(ticketAuditDto, ticket.getJunkedBy() != null ? ticket.getJunkedBy() : "" ,
+                        "Grievance Nodal",
+                        "Ticket junkBy user has been updated");
+
                 ticket.setJunkedBy("-1");
             } else {
                 User user = userRepository.findByKeycloakId(updateTicketRequest.getRequestedBy()).orElseThrow();
                 String firstName = user.getFirstName();
                 String lastName = user.getLastname();
                 String junkedBy = firstName + " " + lastName;
+
+                ticketAuditDto.setAttribute("JUNKED_BY");
+                updateTicketAudit(ticketAuditDto, ticket.getJunkedBy() != null ? ticket.getJunkedBy() : "" ,
+                        String.valueOf(user.getId()),
+                        "Ticket junkBy user has been updated");
+
                 ticket.setJunkedBy(String.valueOf(user.getId()));
             }
         } else if (Boolean.FALSE.equals(updateTicketRequest.getIsJunk())) {
@@ -508,14 +609,25 @@ public class TicketServiceImpl implements TicketService {
         ticket.setUpdatedDate(new Timestamp(DateUtil.getCurrentDate().getTime()));
         // update assignee comments
         if(updateTicketRequest.getComment()!=null) {
+
+            ticketAuditDto.setAttribute("COMMENT");
+            updateTicketAudit(ticketAuditDto, "" , updateTicketRequest.getComment(),
+                    "New comment has been added");
+
             Comments comments = Comments.builder().comment(updateTicketRequest.getComment())
                     .userId(updateTicketRequest.getRequestedBy())
                     .ticketId(ticket.getId())
                     .build();
             commentRepository.save(comments);
         }
+
         // update assignee attachment url
         if(updateTicketRequest.getAssigneeAttachmentURLs() != null) {
+
+            ticketAuditDto.setAttribute("ATTACHMENT");
+            updateTicketAudit(ticketAuditDto, "" , " ",
+                    "New attachment has been added");
+
             for (String url : updateTicketRequest.getAssigneeAttachmentURLs()) {
                 AssigneeTicketAttachment assigneeTicketAttachment = AssigneeTicketAttachment.builder()
                         .userId(updateTicketRequest.getRequestedBy())
@@ -527,15 +639,58 @@ public class TicketServiceImpl implements TicketService {
 
         if (updateTicketRequest.getTicketCouncilId() != null && updateTicketRequest.getTicketCouncilId() != 0) {
             Optional<TicketCouncil> ticketCouncilOptional = ticketCouncilRepository.findById(updateTicketRequest.getTicketCouncilId());
+
             if (ticketCouncilOptional.isPresent()) {
+
+                ticketAuditDto.setAttribute("COUNCIL");
+                updateTicketAudit(ticketAuditDto,
+                        ticket.getTicketCouncil() != null ? ticket.getTicketCouncil().getTicketCouncilName() : null,
+                        ticketCouncilOptional.get().getTicketCouncilName(),
+                        "Ticket council has been updated");
+
                 ticket.setTicketCouncil(ticketCouncilOptional.get());
             }
         }
 
         if (updateTicketRequest.getTicketDepartmentId() != null && updateTicketRequest.getTicketDepartmentId() != 0) {
             Optional<TicketDepartment> ticketDepartmentOptional = ticketDepartmentRepository.findById(updateTicketRequest.getTicketDepartmentId());
+
             if (ticketDepartmentOptional.isPresent()) {
+
+                ticketAuditDto.setAttribute("DEPARTMENT");
+                updateTicketAudit(ticketAuditDto,
+                        ticket.getTicketDepartment() != null ? ticket.getTicketDepartment().getTicketDepartmentName() : null,
+                        ticketDepartmentOptional.get().getTicketDepartmentName(),
+                        "Ticket department has been updated");
+
                 ticket.setTicketDepartment(ticketDepartmentOptional.get());
+            }
+        }
+    }
+
+    /**
+     * @param ticketAuditDto
+     * @param oldValue
+     * @param newValue
+     * @param remark
+     */
+    private void updateTicketAudit(@NonNull TicketAuditDto ticketAuditDto,
+                                   String oldValue, String newValue, String remark) {
+
+        if ((oldValue != null && newValue != null) && !oldValue.equalsIgnoreCase(newValue)) {
+
+            try {
+                log.info(">>>>>>>>>>>>> Ticket audit - ticket id {} : old vlaue {} : new value {}",
+                        ticketAuditDto.getTicketId(), oldValue, newValue);
+
+                ticketAuditDto.setOldValue(oldValue);
+                ticketAuditDto.setNewValue(newValue);
+                ticketAuditDto.setRemark(remark);
+                ticketAuditDto.setUpdatedTime(new Timestamp(DateUtil.getCurrentDate().getTime()));
+
+                ticketAuditService.saveTicketAudit(ticketAuditDto);
+            } catch (Exception e) {
+                log.error("Error while trying to save ticket audit for tiket update value");
             }
         }
     }
