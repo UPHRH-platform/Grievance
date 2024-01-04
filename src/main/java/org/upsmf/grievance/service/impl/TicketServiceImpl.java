@@ -154,7 +154,7 @@ public class TicketServiceImpl implements TicketService {
         // send mail
         EmailDetails emailDetails = EmailDetails.builder().recipient(ticket.getEmail()).subject("New Complaint Registration").build();
         emailService.sendCreateTicketMail(emailDetails, ticket);
-        System.out.println(ticket);
+        log.debug("ticket details - {}",ticket);
         return ticket;
     }
 
@@ -180,7 +180,7 @@ public class TicketServiceImpl implements TicketService {
                 .findById(ticketRequest.getTicketCouncilId());
 
         if (!ticketCouncilOptional.isPresent()) {
-            throw new DataUnavailabilityException("Ticket cuncil does not exist");
+            throw new DataUnavailabilityException("Ticket council does not exist");
         }
 
         Optional<TicketDepartment> ticketDepartmentOptional = ticketDepartmentRepository
@@ -192,9 +192,17 @@ public class TicketServiceImpl implements TicketService {
 
         Long userId = getFirstActiveUserByDepartmentId(ticketRequest.getTicketDepartmentId(), ticketRequest.getTicketCouncilId());
 
+        String grievanceNodalEmail = null;
+        if(userId == -1) {
+            // get admin user
+            Optional<User> adminUser = getOwner(String.valueOf(userId));
+             if(adminUser.isPresent()) {
+                 grievanceNodalEmail = adminUser.get().getEmail();
+             }
+        }
         Optional<User> userOptional = userRepository.findById(userId);
 
-        return Ticket.builder()
+        Ticket createdTicket = Ticket.builder()
                 .createdDate(new Timestamp(DateUtil.getCurrentDate().getTime()))
                 .firstName(ticketRequest.getFirstName())
                 .lastName(ticketRequest.getLastName())
@@ -217,16 +225,20 @@ public class TicketServiceImpl implements TicketService {
                 .ticketDepartment(ticketDepartmentOptional.get())
                 .ownerEmail(userOptional.isPresent() ? userOptional.get().getEmail() : null)
                 .build();
+        if(userId == -1 && grievanceNodalEmail != null && !grievanceNodalEmail.isBlank()) {
+            createdTicket.setOwnerEmail(grievanceNodalEmail);
+        }
+        return createdTicket;
     }
 
     private @NonNull Long getFirstActiveUserByDepartmentId(Long departmentId, Long councilId) {
         if ((departmentId != null && councilId == null) || (departmentId == null && councilId != null)) {
-            log.error("Missing one of attrbutes department id or council id - both are allowed or none");
+            log.error("Missing one of attributes department id or council id - both are allowed or none");
             throw new InvalidDataException("Both council and department id are allowed or none");
         }
 
         if (departmentId == null && councilId == null) {
-            log.info(">>>>>>>>> Did not foound department or council id information - ticket will be unassigned");
+            log.info(">>>>>>>>> Did not found department or council id information - ticket will be unassigned");
             return -1L;
         }
 
@@ -244,6 +256,10 @@ public class TicketServiceImpl implements TicketService {
             return otherAssingedId.get();
         }
 
+        return getUserByDepartmentAndCouncilId(departmentId, councilId);
+    }
+
+    private Long getUserByDepartmentAndCouncilId(Long departmentId, Long councilId) {
         List<UserDepartment> userDepartmentList = userDepartmentRepository
                 .findAllByDepartmentIdAndCouncilId(departmentId, councilId);
 
