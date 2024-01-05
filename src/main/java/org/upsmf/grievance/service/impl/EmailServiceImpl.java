@@ -24,7 +24,6 @@ import org.upsmf.grievance.repository.UserDepartmentRepository;
 import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.repository.UserRoleRepository;
 import org.upsmf.grievance.service.EmailService;
-import org.upsmf.grievance.service.SearchService;
 import org.upsmf.grievance.util.DateUtil;
 
 import javax.mail.MessagingException;
@@ -711,6 +710,7 @@ public class EmailServiceImpl implements EmailService {
 
                         VelocityContext velocityContext = new VelocityContext();
                         velocityContext.put("first_name", user.getFirstName());
+                        velocityContext.put("status", ticket.getStatus().name());
                         velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                         velocityContext.put("id", ticket.getId());
                         // signature
@@ -984,5 +984,46 @@ public class EmailServiceImpl implements EmailService {
                 break;
         }
         return userRole;
+    }
+
+    /** ununsed method
+     * @param details
+     * @param ticket
+     */
+    @Override
+    public void sendEscalationMailToGrievanceNodal(EmailDetails details, Ticket ticket) {
+        try {
+            List<User> users = findGrivanceNodal();
+            if(users == null || users.isEmpty()) {
+                return;
+            }
+            users.stream().forEach(x -> {
+                MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                    public void prepare(MimeMessage mimeMessage) throws Exception {
+                        MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+                        message.setTo(x.getEmail());
+                        message.setSubject(details.getSubject());
+                        VelocityContext velocityContext = new VelocityContext();
+                        velocityContext.put("id", ticket.getId());
+                        velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
+                        velocityContext.put("status", ticket.getStatus().name());
+                        // signature
+                        createCommonMailSignature(velocityContext);
+                        // merge mail body
+                        StringWriter stringWriter = new StringWriter();
+                        velocityEngine.mergeTemplate("templates/nodal_admin_escalation_ticket.vm", "UTF-8", velocityContext, stringWriter);
+
+                        message.setText(stringWriter.toString(), true);
+                    }
+                };
+                // Sending the mail
+                javaMailSender.send(preparator);
+                log.info("create ticket mail Sent Successfully...");
+            });
+        }
+        // Catch block to handle the exceptions
+        catch (Exception e) {
+            log.error("Error while Sending Mail", e);
+        }
     }
 }

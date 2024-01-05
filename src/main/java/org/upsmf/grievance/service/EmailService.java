@@ -45,4 +45,6 @@ public interface EmailService {
     void sendUserCreationMail(User user,String password);
 
     void sendUnjunkMail(EmailDetails details, Ticket ticket);
+
+    void sendEscalationMailToGrievanceNodal(EmailDetails details, Ticket ticket);
 }

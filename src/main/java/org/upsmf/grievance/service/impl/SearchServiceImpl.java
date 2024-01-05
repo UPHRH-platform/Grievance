@@ -70,6 +70,12 @@ public class SearchServiceImpl implements SearchService {
         return TicketResponse.builder().count(page.getTotalElements()).data(page.getContent()).build();
     }
 
+    /**
+     * * mail to ticket owner
+     * * mail to grievance raiser
+     * @param lastUpdatedEpoch
+     * @return
+     */
     @Override
     public long escalateTickets(Long lastUpdatedEpoch) {
         BoolQueryBuilder finalQuery = createTicketEscalationQuery(lastUpdatedEpoch);
@@ -179,9 +185,17 @@ public class SearchServiceImpl implements SearchService {
         EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject(ticketEscalationMailSubjectForRaiser.concat(" - ").concat(String.valueOf(ticket.getId()))).recipient(ticket.getEmail()).build();
         // send mail to raiser
         emailService.sendMailToRaiserForEscalatedTicket(resolutionOfYourGrievance, ticket);
-        EmailDetails escalationNodalSubject = EmailDetails.builder().subject(mailReminderSubject.concat(" - ").concat(String.valueOf(ticket.getId()))).recipient(ticket.getEmail()).build();
-        // send mail to ticket owner
-        emailService.sendMailToNodalForEscalatedTicket(escalationNodalSubject, ticket);
+        if(ticket.getAssignedToId().equalsIgnoreCase("-1")) {
+            String subject = "Escalation of Unassigned Ticket - Ticket ID:".concat(String.valueOf(ticket.getId()));
+            EmailDetails escalationNodalSubject = EmailDetails.builder().subject(subject).recipient(ticket.getEmail()).build();
+            // send mail to ticket owner
+            emailService.sendEscalationMailToGrievanceNodal(escalationNodalSubject, ticket);
+        } else {
+            String subjectNodalOfficer = "Escalation of Assigned Ticket - Ticket ID:".concat(String.valueOf(ticket.getId()));
+            EmailDetails escalationNodalSubject = EmailDetails.builder().subject(subjectNodalOfficer).recipient(ticket.getEmail()).build();
+            // send mail to ticket owner
+            emailService.sendMailToNodalForEscalatedTicket(escalationNodalSubject, ticket);
+        }
     }
 
     private SearchResponse getSearchResponseFromES(SearchSourceBuilder searchSourceBuilder) {
