@@ -31,6 +31,7 @@ import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import java.io.File;
 import java.io.StringWriter;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -937,8 +938,15 @@ public class EmailServiceImpl implements EmailService {
                     message.setTo(user.getEmail());
                     message.setSubject("Welcome - Your Onboarding is Complete!");
 
+                    Optional<String> userRoleOpt = Arrays.stream(user.getRoles()).findFirst();
+
                     VelocityContext velocityContext = new VelocityContext();
                     velocityContext.put("first_name", user.getFirstName());
+                    velocityContext.put("role", null);
+                    if(userRoleOpt.isPresent()){
+                        String role = getRoleStringByRole(userRoleOpt.get());
+                        velocityContext.put("role", role);
+                    }
                     velocityContext.put("username", user.getUsername());
                     velocityContext.put("password", password);
                     // signature
@@ -957,5 +965,27 @@ public class EmailServiceImpl implements EmailService {
             e.printStackTrace();
             log.error("Error while Sending user creation mail", e);
         }
+    }
+
+    private String getRoleStringByRole(String role) {
+        String userRole = null;
+        switch (role) {
+            case "SUPERADMIN" :
+                userRole = "Secretary";
+                break;
+            case "NODALOFFICER" :
+                userRole = "Nodal Officer";
+                break;
+            case "GRIEVANCEADMIN" :
+                userRole = "Grievance Nodal";
+                break;
+            case "ADMIN" :
+                userRole = "Admin";
+                break;
+            default:
+                userRole = null;
+                break;
+        }
+        return userRole;
     }
 }
