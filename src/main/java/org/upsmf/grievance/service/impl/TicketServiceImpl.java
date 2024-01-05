@@ -32,6 +32,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -290,23 +291,66 @@ public class TicketServiceImpl implements TicketService {
 
         List<User> userList = userRepository.findAllByUserDepartmentIn(userDepartmentList);
 
-        if (userList == null || userList.isEmpty()) {
-            log.error("Unable to find user details");
-            throw new DataUnavailabilityException("Unable to find user details");
-        }
-
-        Optional<Long> activeUser = userList.stream()
+        List<User> activeUserList = userList.stream()
                 .filter(user -> user.getStatus() == 1)
-                .map(User::getId)
-                .skip(new Random().nextInt(userList.size()))
-                .findFirst();
+                .collect(Collectors.toList());
 
-        if (!activeUser.isPresent()) {
-            log.error("Unable to find any acivite user");
+        if (activeUserList == null || activeUserList.isEmpty()) {
+            log.error("Unable to find any acivite user from user list");
             throw new DataUnavailabilityException("There no active user for given council and department");
         }
 
-        return activeUser.get();
+        Optional<Long> minTicketUserIdOptional = getMinimumTicketedAssignedUser(activeUserList);
+
+        if (minTicketUserIdOptional.isPresent()) {
+            return minTicketUserIdOptional.get();
+        } else {
+            Optional<Long> activeUser = activeUserList.stream()
+                    .map(User::getId)
+                    .skip(new Random().nextInt(activeUserList.size()))
+                    .findFirst();
+
+            if (!activeUser.isPresent()) {
+                log.error("Unable to find random user from the active list");
+                throw new DataUnavailabilityException("Unable to find user for given council and department");
+            }
+
+            return activeUser.get();
+        }
+    }
+
+    /**
+     * @param activeUserList
+     * @return
+     */
+    private Optional<Long> getMinimumTicketedAssignedUser(List<User> activeUserList) {
+        try {
+            return activeUserList.stream()
+                    .reduce((user1, user2) -> {
+                        if (getTicketCountByUserId(user1.getId()) < getTicketCountByUserId(user2.getId())) {
+                            return user1;
+                        } else {
+                            return user2;
+                        }
+                    })
+                    .map(User::getId);
+        }catch (Exception e) {
+            log.error("Error while calculating minimum ticket assigned user");
+            return Optional.empty();
+        }
+    }
+
+    private Long getTicketCountByUserId(Long userId) {
+        List<Ticket> ticketList = ticketRepository.findAllByAssignedToId(userId.toString());
+
+        if (ticketList == null || ticketList.isEmpty()) {
+            return 0L;
+        }
+
+        return ticketList.stream()
+                .filter(ticket -> ticket.getStatus() != null)
+                .filter(ticket -> ticket.getStatus().equals(TicketStatus.OPEN))
+                .count();
     }
 
     /**
@@ -360,6 +404,7 @@ public class TicketServiceImpl implements TicketService {
             throw new RuntimeException("Ticket does not exists");
         }
         ticket = ticketDetails.get();
+        boolean oldIsJunkValue = ticket.isJunk();
         // set incoming values
         setUpdateTicket(updateTicketRequest, ticket);
         // update ticket in DB
@@ -401,7 +446,14 @@ public class TicketServiceImpl implements TicketService {
             EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Resolution of Your Grievance - " + curentUpdatedTicket.getTicketId()).recipient(curentUpdatedTicket.getEmail()).build();
             ticket.setOther(updateTicketRequest.getIsOther());
 
-            if (ticket.getAssignedToId() != null && ticket.getAssignedToId().equalsIgnoreCase("-1")) {
+            if (Boolean.FALSE.equals(updateTicketRequest.getIsJunk()) && Boolean.TRUE.equals(oldIsJunkValue)) {
+                EmailDetails emailDetails = EmailDetails.builder()
+                        .subject("Ticket Unjunked - " + curentUpdatedTicket.getTicketId())
+                        .recipient(ticket.getOwnerEmail())
+                        .build();
+
+                emailService.sendUnjunkMail(emailDetails, ticket);
+            }else if (ticket.getAssignedToId() != null && ticket.getAssignedToId().equalsIgnoreCase("-1")) {
                 emailService.sendMailToGrievanceNodal(resolutionOfYourGrievance, ticket);
             }
 
@@ -496,6 +548,9 @@ public class TicketServiceImpl implements TicketService {
             updateTicketAudit(ticketAuditDto, ticket.getStatus().name(),
                     updateTicketRequest.getStatus().name(), "Ticket status has been updated");
 
+            if (TicketStatus.CLOSED.name().equalsIgnoreCase(updateTicketRequest.getStatus().name())) {
+                ticket.setJunk(false);
+            }
             ticket.setStatus(updateTicketRequest.getStatus());
         }
 

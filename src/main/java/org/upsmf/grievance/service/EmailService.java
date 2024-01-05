@@ -43,4 +43,6 @@ public interface EmailService {
     void sendUserActivationMail(User user, boolean active);
 
     void sendUserCreationMail(User user,String password);
+
+    void sendUnjunkMail(EmailDetails details, Ticket ticket);
 }

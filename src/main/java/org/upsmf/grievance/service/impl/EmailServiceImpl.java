@@ -734,6 +734,44 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    /**
+     * Unjunk mail is using raiser mail template
+     *
+     * @param details
+     * @param ticket
+     */
+    @Override
+    public void sendUnjunkMail(EmailDetails details, Ticket ticket) {
+        try {
+            MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                public void prepare(MimeMessage mimeMessage) throws Exception {
+                    MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+                    message.setTo(details.getRecipient());
+                    message.setSubject(details.getSubject());
+
+                    VelocityContext velocityContext = new VelocityContext();
+                    velocityContext.put("first_name", ticket.getFirstName());
+                    velocityContext.put("id", ticket.getId());
+                    velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
+                    // signature
+                    createCommonMailSignature(velocityContext);
+                    // merge mail body
+                    StringWriter stringWriter = new StringWriter();
+                    velocityEngine.mergeTemplate("templates/raiser-create-ticket.vm", "UTF-8", velocityContext, stringWriter);
+
+                    message.setText(stringWriter.toString(), true);
+                }
+            };
+            // Sending the mail
+            javaMailSender.send(preparator);
+            log.info("create ticket mail Sent Successfully...");
+        }
+        // Catch block to handle the exceptions
+        catch (Exception e) {
+            log.error("Error while Sending Mail", e);
+        }
+    }
+
     @Override
     public void sendNudgeMailToGrievanceNodal(EmailDetails details, Ticket ticket) {
         try {
