@@ -34,4 +34,7 @@ public interface UserRepository extends PagingAndSortingRepository<User,Long> {
 
     @Query(value = "select * from users u where status = 1", nativeQuery = true)
     List<User> findAllActiveUsers();
+
+    @Query(value = "SELECT u FROM User u WHERE u.id IN :ids")
+    List<User> findAllUserInIds(List<Long> ids);
 }

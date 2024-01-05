@@ -334,6 +334,49 @@ public class IntegrationServiceImpl implements IntegrationService {
         if (StringUtils.isEmpty(attributeMap.get("Role"))  ) {
             throw new UserException("Role is missing", ErrorCode.USER_002);
         }
+
+        String role = userDto.getAttributes().get(ROLE);
+
+        if (role != null && !role.isBlank() && ("SUPERADMIN".equalsIgnoreCase(role) || "ADMIN".equalsIgnoreCase(role))) {
+            Role roleDetails = roleRepository.findByName(role);
+
+            if(roleDetails == null) {
+                log.warn("SUPERADMIN/ADMIN role is not available");
+                throw new UserException("SUPERADMIN/ADMIN Role is missing", ErrorCode.USER_002);
+            }
+
+            List<UserRole> userRoleList = userRoleRepository.findByRoleId(roleDetails.getId());
+
+            if (userRoleList == null || userRoleList.isEmpty()) {
+                log.info("Unable to find UserRole record");
+                return;
+            }
+
+            List<Long> userIdList = userRoleList.stream()
+                    .map(userRole -> userRole.getUserId())
+                    .collect(Collectors.toList());
+
+            List<User> userList = userRepository.findAllUserInIds(userIdList);
+
+            if (userList == null || userList.isEmpty()) {
+                log.info("There is broken mapping with user and userRole mapping");
+                return;
+            }
+
+            Optional<User> userOptional = userList.stream()
+                    .filter(user -> user.getStatus() == 1)
+                    .findAny();
+
+            if (userOptional.isPresent()) {
+                if (("SUPERADMIN".equalsIgnoreCase(role))) {
+                    throw new UserException("Secratary already exist", ErrorCode.USER_002);
+                }
+
+                if (("ADMIN".equalsIgnoreCase(role))) {
+                    throw new UserException("Admin already exist", ErrorCode.USER_002);
+                }
+            }
+        }
     }
 
     /**

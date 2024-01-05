@@ -106,8 +106,15 @@ public class FeedbackServiceImpl implements FeedbackService {
 
     private boolean isValidName(String name) {
         // Validate name format using a regular expression
-        String namePattern = "[A-Za-z]+";
-        return Pattern.matches(namePattern, name);
+
+        if (name == null || name.isBlank()){
+            return false;
+        } else {
+            return true;
+        }
+
+//        String namePattern = "[A-Za-z]+";
+//        return Pattern.matches(namePattern, name);
     }
 
 }
