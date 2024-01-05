@@ -85,10 +85,10 @@
                                                                                     <td align="justify" class="esd-block-text es-m-txt-l">
                                                                                         <p></br></p>
                                                                                         <p>Dear Sir/Madam,</p>
-                                                                                        <p>I hope this email finds you well. We wanted to inform you about an incoming nudge in the grievance ticket with Grievance ID [Ticket ID], which has not been assigned yet. The details are as follows:</p>
+                                                                                        <p>I hope this email finds you well. We wanted to inform you about an incoming nudge in the grievance ticket with Grievance ID <strong>${id}</strong>, which has not been assigned yet. The details are as follows:</p>
                                                                                         <p>
                                                                                             <div>Grievance ID: <strong>${id}</strong></div>
-                                                                                            <div>Date: <strong>${created_date}</strong></div>
+                                                                                            <div>Created Date: <strong>${created_date}</strong></div>
                                                                                             <div>Current Status: <strong>${status}</strong></div>
                                                                                             <div>Nudged On: <strong>${nudged_date}</strong></div>
                                                                                             <div>Number of Nudge Received So Far: <strong>${nudged_count}</strong></div>

@@ -31,10 +31,7 @@ import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import java.io.File;
 import java.io.StringWriter;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 // Annotation
 @Service
@@ -637,7 +634,7 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("priority", ticket.getPriority());
                         velocityContext.put("department", departmentName);
                         velocityContext.put("status", ticket.getStatus().name());
-                        velocityContext.put("nudged_date", ticket.getEscalatedDate());
+                        velocityContext.put("nudged_date", DateUtil.getFormattedDateInIST(new Date()));
                         velocityContext.put("nudged_count", ticket.getReminderCounter());
                         velocityContext.put("site_url", siteUrl);
                         // signature
@@ -804,7 +801,7 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("priority", ticket.getPriority());
                         velocityContext.put("department", departmentName);
                         velocityContext.put("status", ticket.getStatus().name());
-                        velocityContext.put("nudged_date", ticket.getEscalatedDate());
+                        velocityContext.put("nudged_date", DateUtil.getFormattedDateInIST(new Date()));
                         velocityContext.put("nudged_count", ticket.getReminderCounter());
                         velocityContext.put("site_url", siteUrl);
                         // signature
