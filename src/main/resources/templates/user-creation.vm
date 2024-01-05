@@ -86,7 +86,7 @@
                                                                                         <p></br></p>
                                                                                         <p>Dear ${first_name},</p>
                                                                                         <p>Welcome aboard! We are thrilled to have you as a #if(${role})<span><strong>${role}</strong></span>#else<span>new user</span>#end
-                                                                                        of our application. Your onboarding process has been successfully completed, and you are now ready to use our application.</p>
+                                                                                        in our application. Your onboarding process has been successfully completed, and you are now ready to use our application.</p>
                                                                                         <p>Here are your login details:</p>
                                                                                         <p>
                                                                                             <div>User ID: <strong>${username}</strong></div>
