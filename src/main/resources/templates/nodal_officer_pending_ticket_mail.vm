@@ -10,7 +10,7 @@
     <title></title>
 </head>
 
-<body style="background: #fdebe8; padding: 50px">
+<body style="background: #ffffff; padding: 50px">
     <div class="es-wrapper-color">
         <table class="es-wrapper" width="100%" cellspacing="0" cellpadding="0">
             <tbody>
@@ -84,29 +84,53 @@
                                                                                 <tr>
                                                                                     <td align="justify" class="esd-block-text es-m-txt-l">
                                                                                         <p></br></p>
-                                                                                        <p>Dear ${first_name},</p>
-                                                                                        <p>We hope this email finds you well. We are writing to provide you with an update regarding your recent ticket assignments.</p>
+                                                                                        <p>Dear Sir/Madam,</p>
+                                                                                        <p>I trust this email finds you well. As part of our ongoing commitment to resolving customer concerns promptly, we would like to bring to your attention the following pending tickets that require immediate action.</p>
                                                                                         <p>
                                                                                             <div>Here is a brief overview of the status:</div>
                                                                                             #if ($tickets)
                                                                                             #set( $count = 1 )
-                                                                                                <table width="80%" cellspacing="0" cellpadding="0">
-                                                                                                    #foreach( $ticket in $tickets)
+                                                                                                <table width="100%" cellspacing="0" cellpadding="0" border="1px">
+                                                                                                    <tr>
+                                                                                                        <th>S. No.</th>
+                                                                                                        <th>Grievance ID</th>
+                                                                                                        <th>Created Date</th>
+                                                                                                        <th>Assigned To</th>
+                                                                                                        <th>Current Status</th>
+                                                                                                        <th>Date of last status change</th>
+                                                                                                    </tr>
+                                                                                                    #foreach($ticket in $tickets)
                                                                                                         <tr>
                                                                                                             <td>$count</td>
-                                                                                                            <td>$ticket.description</td>
+                                                                                                            <td>$ticket.ticketId</td>
+                                                                                                            <td>$ticket.createdDate</td>
+                                                                                                            #if($ticket.ownerEmail)
+                                                                                                            <td>$ticket.ownerEmail</td>
+                                                                                                            #else
+                                                                                                            <td>NA</td>
+                                                                                                            #end
+                                                                                                            <td>$ticket.status</td>
+                                                                                                            <td>$ticket.updatedDate</td>
                                                                                                         </tr>
                                                                                                         #set( $count = $count + 1 )
                                                                                                     #end
                                                                                                 </table>
                                                                                             #end
                                                                                         </p>
+                                                                                        <p>
+                                                                                            It is crucial that we address these concerns promptly to ensure customer satisfaction and maintain the high standards of service we strive to uphold.
+                                                                                            We kindly request you to assign these tickets to the respective Nodal Officers as per our established protocol.
+                                                                                        </p>
+                                                                                        <p>
+                                                                                            If you have any questions or require additional information regarding any of the tickets listed, please do not hesitate to reach out to us.
+                                                                                            Your prompt attention to this matter is highly appreciated, and your commitment to resolving customer grievances is invaluable to our organization.
+                                                                                        </p>
                                                                                     </td>
                                                                                 </tr>
                                                                                 <tr></tr>
                                                                                 <tr>
                                                                                     <td align="left" class="esd-block-text">
-                                                                                        <p>Sincerely,</p>
+                                                                                        <p>Best regards,</p>
                                                                                         <p>
                                                                                             <div>${signature_name}</div>
                                                                                             <div>${address}</div>
@@ -145,6 +169,11 @@
                                         <td class="esd-structure es-p20t es-p20b es-p20r es-p20l" align="left">
                                             <table class="es-left" cellspacing="0" cellpadding="0" align="center">
                                                 <tbody>
+                                                    <tr>
+                                                        <p>
+                                                            Please be informed that this email has been generated by the system. If you have any queries or require clarification, kindly contact the administrator.
+                                                        </p>
+                                                    </tr>
                                                     <tr>
                                                         <td class="es-m-p20b esd-container-frame" width="400" align="left">
                                                             <table width="100%" cellspacing="0" cellpadding="0">

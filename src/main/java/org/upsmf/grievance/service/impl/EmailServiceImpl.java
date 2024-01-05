@@ -636,6 +636,8 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("priority", ticket.getPriority());
                         velocityContext.put("department", departmentName);
                         velocityContext.put("status", ticket.getStatus().name());
+                        velocityContext.put("nudged_date", ticket.getEscalatedDate());
+                        velocityContext.put("nudged_count", ticket.getReminderCounter());
                         velocityContext.put("site_url", siteUrl);
                         // signature
                         createCommonMailSignature(velocityContext);
@@ -763,12 +765,14 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("priority", ticket.getPriority());
                         velocityContext.put("department", departmentName);
                         velocityContext.put("status", ticket.getStatus().name());
+                        velocityContext.put("nudged_date", ticket.getEscalatedDate());
+                        velocityContext.put("nudged_count", ticket.getReminderCounter());
                         velocityContext.put("site_url", siteUrl);
                         // signature
                         createCommonMailSignature(velocityContext);
                         // merge mail body
                         StringWriter stringWriter = new StringWriter();
-                        velocityEngine.mergeTemplate("templates/nodal_nudge_ticket.vm", "UTF-8", velocityContext, stringWriter);
+                        velocityEngine.mergeTemplate("templates/nodal_admin_nudge_ticket.vm", "UTF-8", velocityContext, stringWriter);
 
                         message.setText(stringWriter.toString(), true);
                     }

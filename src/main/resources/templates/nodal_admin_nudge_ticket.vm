@@ -84,28 +84,24 @@
                                                                                 <tr>
                                                                                     <td align="justify" class="esd-block-text es-m-txt-l">
                                                                                         <p></br></p>
-                                                                                        <p>Dear ${first_name},</p>
-                                                                                        <p>We hope this email finds you well. We are writing to provide you with an update regarding your recent ticket with us, ${id}.</p>
-                                                                                        <p>We are pleased to inform you that significant progress has been made in resolving the issue you reported. Our dedicated team has been diligently working on your case, and we are confident that we are moving towards a resolution.</p>
+                                                                                        <p>Dear Sir/Madam,</p>
+                                                                                        <p>I hope this email finds you well. We wanted to inform you about an incoming nudge in the grievance ticket with Grievance ID [Ticket ID], which has not been assigned yet. The details are as follows:</p>
                                                                                         <p>
-                                                                                            <div>Here is a brief overview of the status:</div>
                                                                                             <div>Grievance ID: <strong>${id}</strong></div>
-                                                                                            <div>Date of Registration: <strong>${created_date}</strong></div>
+                                                                                            <div>Date: <strong>${created_date}</strong></div>
                                                                                             <div>Current Status: <strong>${status}</strong></div>
-                                                                                            <div>Date of Last Update: <strong>${updated_date}</strong></div>
-                                                                                            #if (${other_by})
-                                                                                                <div>Reason to mark other: <strong>${other_by_reason}</strong></div>
-                                                                                            #end
+                                                                                            <div>Nudged On: <strong>${nudged_date}</strong></div>
+                                                                                            <div>Number of Nudge Received So Far: <strong>${nudged_count}</strong></div>
                                                                                         </p>
-                                                                                        <p>Our support team is continuously monitoring the situation to ensure that all necessary steps are taken to address your concerns effectively and efficiently. Rest assured; we are committed to providing you with the best possible resolution.</p>
-                                                                                        <p>If you have any additional information or updates that could be helpful for our team to better understand your issue, please feel free to share it with us. Your input is valuable and can contribute to a swifter resolution.</p>
-                                                                                        <p>We will keep you updated on any further developments regarding your ticket.</p>
+                                                                                        <p>It is crucial that we address these concerns promptly to ensure customer satisfaction and maintain the high standards of service we strive to uphold. We kindly request you to assign these tickets to the respective Nodal Officers as per our established protocol.</p>
+                                                                                        <p>To ensure the best possible resolution for the customer and to expedite the process, Secretary, UPSMF has given you a nudge.</p>
+                                                                                        <p>You are requested to assign this ticket on priority.</p>
                                                                                     </td>
                                                                                 </tr>
                                                                                 <tr></tr>
                                                                                 <tr>
                                                                                     <td align="left" class="esd-block-text">
-                                                                                        <p>Sincerely,</p>
+                                                                                        <p>Best regards,</p>
                                                                                         <p>
                                                                                             <div>${signature_name}</div>
                                                                                             <div>${address}</div>
@@ -144,6 +140,11 @@
                                         <td class="esd-structure es-p20t es-p20b es-p20r es-p20l" align="left">
                                             <table class="es-left" cellspacing="0" cellpadding="0" align="center">
                                                 <tbody>
+                                                    <tr>
+                                                        <p>
+                                                            Please be informed that this email has been generated by the system. If you have any queries or require clarification, kindly contact the administrator.
+                                                        </p>
+                                                    </tr>
                                                     <tr>
                                                         <td class="es-m-p20b esd-container-frame" width="400" align="left">
                                                             <table width="100%" cellspacing="0" cellpadding="0">
