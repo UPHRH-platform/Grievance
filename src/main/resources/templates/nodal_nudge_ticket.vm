@@ -85,7 +85,7 @@
                                                                                     <td align="justify" class="esd-block-text es-m-txt-l">
                                                                                         <p></br></p>
                                                                                         <p>Dear Sir/Madam,</p>
-                                                                                        <p>Hope this email finds you well. We wanted to inform you about an incoming nudge in the grievance ticket with Grievance ID [Ticket ID], which has been assigned you. The details are as follows:</p>
+                                                                                        <p>Hope this email finds you well. We wanted to inform you about an incoming nudge in the grievance ticket with Grievance ID <strong>${id}</strong>, which has been assigned you. The details are as follows:</p>
                                                                                         <p>
                                                                                             <div>Grievance ID: <strong>${id}</strong></div>
                                                                                             <div>Date: <strong>${created_date}</strong></div>
