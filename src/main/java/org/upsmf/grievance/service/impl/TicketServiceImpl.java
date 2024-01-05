@@ -550,6 +550,7 @@ public class TicketServiceImpl implements TicketService {
 
             if (TicketStatus.CLOSED.name().equalsIgnoreCase(updateTicketRequest.getStatus().name())) {
                 ticket.setJunk(false);
+                updateTicketRequest.setIsJunk(false);
             }
             ticket.setStatus(updateTicketRequest.getStatus());
         }
