@@ -104,11 +104,7 @@
                                                                                                             <td>$count</td>
                                                                                                             <td>$ticket.ticketId</td>
                                                                                                             <td>$ticket.createdDate</td>
-                                                                                                            #if($ticket.ownerEmail)
-                                                                                                            <td>$ticket.ownerEmail</td>
-                                                                                                            #else
-                                                                                                            <td>NA</td>
-                                                                                                            #end
+                                                                                                            <td>$ticket.assignedToName</td>
                                                                                                             <td>$ticket.status</td>
                                                                                                             <td>$ticket.updatedDate</td>
                                                                                                         </tr>
