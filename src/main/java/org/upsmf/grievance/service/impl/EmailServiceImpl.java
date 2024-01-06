@@ -750,6 +750,8 @@ public class EmailServiceImpl implements EmailService {
                     VelocityContext velocityContext = new VelocityContext();
                     velocityContext.put("first_name", ticket.getFirstName());
                     velocityContext.put("id", ticket.getId());
+                    velocityContext.put("status", ticket.getStatus());
+                    velocityContext.put("site_url", siteUrl);
                     velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                     // signature
                     createCommonMailSignature(velocityContext);
