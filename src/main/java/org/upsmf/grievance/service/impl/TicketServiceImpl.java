@@ -420,46 +420,128 @@ public class TicketServiceImpl implements TicketService {
         }
         org.upsmf.grievance.model.es.Ticket curentUpdatedTicket=esTicketRepository.save(updatedESTicket);
         //send mail to end user
-        TicketStatus currentTicketStatus=curentUpdatedTicket.getStatus();
         curentUpdatedTicket.getEmail();
         curentUpdatedTicket.getTicketId();
         if(curentUpdatedTicket.getStatus().name().equalsIgnoreCase(TicketStatus.CLOSED.name())) {
-            generateFeedbackLinkAndEmail(ticket);
+            sendMailForFeedbackLinkAndEmail(ticket);
             return ticket;
         } else if (curentUpdatedTicket.getStatus().name().equalsIgnoreCase(TicketStatus.INVALID.name())) {
             ticket.setJunk(updateTicketRequest.getIsJunk());
-            generateFeedbackLinkAndEmailForJunkTicket(ticket);
+            sendMailForFeedbackLinkAndEmailForJunkMail(ticket);
             return ticket;
         }else if (updateTicketRequest.getIsNudged() != null && updateTicketRequest.getIsNudged()
                 && !org.apache.commons.lang.StringUtils.isEmpty(updateTicketRequest.getCc())) {
             if(ticket.getAssignedToId() != null && !ticket.getAssignedToId().equalsIgnoreCase("-1")) {
-                sendMailToNodal(ticket);
+                sendMailToNodalAsync(ticket);
             } else if(ticket.getAssignedToId() != null && ticket.getAssignedToId().equalsIgnoreCase("-1")) {
-                String subject = "Nudge from Secretary, UPSMF in an Unassigned Ticket - Ticket ID: ".concat(String.valueOf(ticket.getId()));
-                EmailDetails emailDetails = EmailDetails.builder()
-                        .subject(subject)
-                        .build();
-                emailService.sendNudgeMailToGrievanceNodal(emailDetails, ticket);
+                sendNudgeMailToGrievanceNodal(ticket);
             }
             return ticket;
         } else {
-            EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Resolution of Your Grievance - " + curentUpdatedTicket.getTicketId()).recipient(curentUpdatedTicket.getEmail()).build();
             ticket.setOther(updateTicketRequest.getIsOther());
 
             if (Boolean.FALSE.equals(updateTicketRequest.getIsJunk()) && Boolean.TRUE.equals(oldIsJunkValue)) {
-                EmailDetails emailDetails = EmailDetails.builder()
-                        .subject("Ticket Unjunked - " + curentUpdatedTicket.getTicketId())
-                        .recipient(ticket.getOwnerEmail())
-                        .build();
-
-                emailService.sendUnjunkMail(emailDetails, ticket);
+                sendMailForUnJunk(ticket, curentUpdatedTicket);
             }else if (ticket.getAssignedToId() != null && ticket.getAssignedToId().equalsIgnoreCase("-1")) {
-                emailService.sendMailToGrievanceNodal(resolutionOfYourGrievance, ticket);
+                sendMailToGrievanceNodal(ticket, curentUpdatedTicket);
             }
 
-            emailService.sendUpdateTicketMail(resolutionOfYourGrievance, ticket);
+            sendUpdateTicketMail(ticket, curentUpdatedTicket);
             return ticket;
         }
+    }
+
+    private void sendUpdateTicketMail(Ticket ticket, org.upsmf.grievance.model.es.Ticket curentUpdatedTicket) {
+        Ticket finalTicket = ticket;
+        org.upsmf.grievance.model.es.Ticket finalCurentUpdatedTicket = curentUpdatedTicket;
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Resolution of Your Grievance - " + finalCurentUpdatedTicket.getTicketId()).recipient(finalCurentUpdatedTicket.getEmail()).build();
+                emailService.sendUpdateTicketMail(resolutionOfYourGrievance, finalTicket);
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
+    }
+    private void sendMailToGrievanceNodal(Ticket ticket, org.upsmf.grievance.model.es.Ticket curentUpdatedTicket) {
+        Ticket finalTicket = ticket;
+        org.upsmf.grievance.model.es.Ticket finalCurentUpdatedTicket = curentUpdatedTicket;
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Resolution of Your Grievance - " + finalCurentUpdatedTicket.getTicketId()).recipient(finalCurentUpdatedTicket.getEmail()).build();
+                emailService.sendMailToGrievanceNodal(resolutionOfYourGrievance, finalTicket);
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
+    }
+    private void sendMailForFeedbackLinkAndEmail(Ticket ticket) {
+        Ticket finalTicket = ticket;
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                generateFeedbackLinkAndEmail(finalTicket);
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
+    }
+    private void sendMailForUnJunk(Ticket ticket, org.upsmf.grievance.model.es.Ticket curentUpdatedTicket) {
+        Ticket finalTicket = ticket;
+        org.upsmf.grievance.model.es.Ticket finalCurentUpdatedTicket = curentUpdatedTicket;
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                EmailDetails emailDetails = EmailDetails.builder()
+                        .subject("Ticket Re-opened with ID - " + finalCurentUpdatedTicket.getTicketId())
+                        .recipient(finalTicket.getOwnerEmail())
+                        .build();
+
+                emailService.sendUnjunkMail(emailDetails, finalTicket);
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
+    }
+    private void sendNudgeMailToGrievanceNodal(Ticket ticket) {
+        Ticket finalTicket = ticket;
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                String subject = "Nudge from Secretary, UPSMF in an Unassigned Ticket - Ticket ID: ".concat(String.valueOf(finalTicket.getId()));
+                EmailDetails emailDetails = EmailDetails.builder()
+                        .subject(subject)
+                        .build();
+                emailService.sendNudgeMailToGrievanceNodal(emailDetails, finalTicket);
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
+    }
+    private void sendMailToNodalAsync(Ticket ticket) {
+        Ticket finalTicket = ticket;
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                sendMailToNodal(finalTicket);
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
+    }
+
+    private void sendMailForFeedbackLinkAndEmailForJunkMail(Ticket ticket) {
+        Ticket finalTicket = ticket;
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                generateFeedbackLinkAndEmailForJunkTicket(finalTicket);
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
     }
 
     private void sendMailToNodal(Ticket ticket) {
