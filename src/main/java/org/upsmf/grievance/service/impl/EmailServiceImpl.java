@@ -755,7 +755,7 @@ public class EmailServiceImpl implements EmailService {
                     createCommonMailSignature(velocityContext);
                     // merge mail body
                     StringWriter stringWriter = new StringWriter();
-                    velocityEngine.mergeTemplate("templates/raiser-create-ticket.vm", "UTF-8", velocityContext, stringWriter);
+                    velocityEngine.mergeTemplate("templates/nodal_create_ticket.vm", "UTF-8", velocityContext, stringWriter);
 
                     message.setText(stringWriter.toString(), true);
                 }
