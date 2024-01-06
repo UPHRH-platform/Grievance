@@ -36,6 +36,8 @@ public interface EmailService {
 
     void sendMailTicketAggregateMailToSecretary(EmailDetails emailDetails, User user, List<org.upsmf.grievance.model.es.Ticket> openTicketsByID);
 
+    void sendMailToNodalOfficer(EmailDetails details, Ticket ticket);
+
     void sendMailToGrievanceNodal(EmailDetails details, Ticket ticket);
 
     void sendNudgeMailToGrievanceNodal(EmailDetails details, Ticket ticket);

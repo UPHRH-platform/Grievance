@@ -406,6 +406,7 @@ public class TicketServiceImpl implements TicketService {
         }
         ticket = ticketDetails.get();
         boolean oldIsJunkValue = ticket.isJunk();
+        TicketStatus oldStatusValue = ticket.getStatus();
         // set incoming values
         setUpdateTicket(updateTicketRequest, ticket);
         // update ticket in DB
@@ -443,8 +444,17 @@ public class TicketServiceImpl implements TicketService {
 
             if (Boolean.FALSE.equals(updateTicketRequest.getIsJunk()) && Boolean.TRUE.equals(oldIsJunkValue)) {
                 sendMailForUnJunk(ticket, curentUpdatedTicket);
-            }else if (ticket.getAssignedToId() != null && ticket.getAssignedToId().equalsIgnoreCase("-1")) {
+            } else if (ticket.getAssignedToId() != null && ticket.getAssignedToId().equalsIgnoreCase("-1")) {
                 sendMailToGrievanceNodal(ticket, curentUpdatedTicket);
+            } else if(updateTicketRequest.getStatus().name().equalsIgnoreCase("OPEN")
+                    && oldStatusValue.name().equalsIgnoreCase("CLOSED") ) {
+                // sending reopen ticket mail to nodal officer
+                log.info("sending reopen ticket mail to nodal officer - {}", ticket.getOwnerEmail());
+                if(!ticket.getAssignedToId().equalsIgnoreCase("-1")
+                        && ticket.getOwnerEmail() != null
+                        && !ticket.getOwnerEmail().isBlank()) {
+                    sendReopenTicketMailToNodal(ticket, curentUpdatedTicket);
+                }
             }
 
             sendUpdateTicketMail(ticket, curentUpdatedTicket);
@@ -452,6 +462,22 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
+    private void sendReopenTicketMailToNodal(Ticket ticket, org.upsmf.grievance.model.es.Ticket curentUpdatedTicket) {
+        Ticket finalTicket = ticket;
+        org.upsmf.grievance.model.es.Ticket finalCurentUpdatedTicket = curentUpdatedTicket;
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                EmailDetails emailDetails = EmailDetails.builder()
+                        .subject("Ticket Re-opened with ID - " + finalCurentUpdatedTicket.getTicketId())
+                        .recipient(finalTicket.getOwnerEmail())
+                        .build();
+                emailService.sendMailToNodalOfficer(emailDetails, finalTicket);
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
+    }
     private void sendUpdateTicketMail(Ticket ticket, org.upsmf.grievance.model.es.Ticket curentUpdatedTicket) {
         Ticket finalTicket = ticket;
         org.upsmf.grievance.model.es.Ticket finalCurentUpdatedTicket = curentUpdatedTicket;

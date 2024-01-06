@@ -217,7 +217,7 @@ public class EmailServiceImpl implements EmailService {
             };
             // Sending the mail
             javaMailSender.send(preparator);
-            log.info("create ticket mail Sent Successfully...");
+            log.info("update ticket mail Sent Successfully...");
         }
         // Catch block to handle the exceptions
         catch (Exception e) {
@@ -225,7 +225,8 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
-    private void sendMailToNodalOfficer(EmailDetails details, Ticket ticket) {
+    @Override
+    public void sendMailToNodalOfficer(EmailDetails details, Ticket ticket) {
         try {
 
             List<User> users = getUsersByAssignedId(ticket.getAssignedToId());
@@ -267,7 +268,7 @@ public class EmailServiceImpl implements EmailService {
                 };
                 // Sending the mail
                 javaMailSender.send(preparator);
-                log.info("create ticket mail Sent Successfully...");
+                log.info("ticket mail Sent Successfully...");
             });
         }
         // Catch block to handle the exceptions
