@@ -102,9 +102,7 @@ public class NightlyJobScheduler {
                 log.info("Escalation config found invalid value - {}", mailConfigDto.get());
                 return;
             }
-            // todo revert this once tested in dev
-            //long lastUpdateTimeBeforeEscalation = LocalDateTime.now().minusDays(escalationPeriodInDays).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-            long lastUpdateTimeBeforeEscalation = LocalDateTime.now().minusMinutes(5).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            long lastUpdateTimeBeforeEscalation = LocalDateTime.now().minusDays(escalationPeriodInDays).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
             long response = searchService.escalateTickets(lastUpdateTimeBeforeEscalation);
             log.info("No of tickets escalated "+response);
         }

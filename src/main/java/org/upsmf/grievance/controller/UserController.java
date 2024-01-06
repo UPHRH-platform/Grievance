@@ -185,4 +185,14 @@ public class UserController {
         }
     }
 
+    @GetMapping("/{username}/status")
+    public ResponseEntity getUserStatusByEmail(@PathVariable("username") String userName) throws RuntimeException{
+        try {
+            return integrationService.getUserStatusByEmail(userName);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(e.getLocalizedMessage());
+        }
+    }
+
 }

@@ -1012,4 +1012,13 @@ public class IntegrationServiceImpl implements IntegrationService {
         List<User> users = allActiveUsers.stream().filter(x -> Arrays.stream(x.getRoles()).anyMatch(userRole -> userRole.equalsIgnoreCase(role))).collect(Collectors.toList());
         return users;
     }
+
+    @Override
+    public ResponseEntity<Boolean> getUserStatusByEmail(String userName) {
+        Optional<User> user = userRepository.findByUsernameAndStatus(userName, 1);
+        if(user.isPresent()) {
+            return ResponseEntity.ok(Boolean.TRUE);
+        }
+        return ResponseEntity.ok(Boolean.FALSE);
+    }
 }

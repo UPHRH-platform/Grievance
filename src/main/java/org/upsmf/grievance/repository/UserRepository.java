@@ -37,4 +37,6 @@ public interface UserRepository extends PagingAndSortingRepository<User,Long> {
 
     @Query(value = "SELECT u FROM User u WHERE u.id IN :ids")
     List<User> findAllUserInIds(List<Long> ids);
+
+    Optional<User> findByUsernameAndStatus(String userName, int status);
 }
