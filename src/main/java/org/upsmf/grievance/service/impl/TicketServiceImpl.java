@@ -16,6 +16,7 @@ import org.upsmf.grievance.enums.TicketPriority;
 import org.upsmf.grievance.enums.TicketStatus;
 import org.upsmf.grievance.exception.DataUnavailabilityException;
 import org.upsmf.grievance.exception.InvalidDataException;
+import org.upsmf.grievance.exception.TicketException;
 import org.upsmf.grievance.model.*;
 import org.upsmf.grievance.repository.*;
 import org.upsmf.grievance.repository.es.TicketRepository;
@@ -24,6 +25,7 @@ import org.upsmf.grievance.service.OtpService;
 import org.upsmf.grievance.service.TicketAuditService;
 import org.upsmf.grievance.service.TicketService;
 import org.upsmf.grievance.util.DateUtil;
+import org.upsmf.grievance.util.ErrorCode;
 
 import javax.transaction.Transactional;
 import java.sql.Timestamp;
@@ -153,21 +155,20 @@ public class TicketServiceImpl implements TicketService {
         // validate request
         validateTicketRequest(ticketRequest);
 
-//        Todo: uncomment opt condition
         // validate OTP
-//        boolean isValid = otpService.validateOtp(ticketRequest.getEmail(), ticketRequest.getOtp());
-//        if(!isValid) {
-//            throw new TicketException("Invalid mail OTP, Please enter correct OTP", ErrorCode.TKT_001,
-//                    "Error while matching mail OTP");
-//        } else {
-//            boolean isMobileOtpValid = otpService.validateMobileOtp(ticketRequest.getPhone(),
-//                    ticketRequest.getMobileOtp());
-//
-//            if (!isMobileOtpValid) {
-//                throw new TicketException("Invalid mobile OTP, Please enter correct OTP", ErrorCode.TKT_001,
-//                        "Error while matching mobile OTP");
-//            }
-//        }
+        boolean isValid = otpService.validateOtp(ticketRequest.getEmail(), ticketRequest.getOtp());
+        if(!isValid) {
+            throw new TicketException("Invalid mail OTP, Please enter correct OTP", ErrorCode.TKT_001,
+                    "Error while matching mail OTP");
+        } else {
+            boolean isMobileOtpValid = otpService.validateMobileOtp(ticketRequest.getPhone(),
+                    ticketRequest.getMobileOtp());
+
+            if (!isMobileOtpValid) {
+                throw new TicketException("Invalid mobile OTP, Please enter correct OTP", ErrorCode.TKT_001,
+                        "Error while matching mobile OTP");
+            }
+        }
         // set default value for creating ticket
         Ticket ticket = createTicketWithDefault(ticketRequest);
         // create ticket
