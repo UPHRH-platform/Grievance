@@ -829,28 +829,7 @@ public class EmailServiceImpl implements EmailService {
     public void sendMailTicketAggregateMailToNodalOfficer(EmailDetails details, User user,
                   List<org.upsmf.grievance.model.es.Ticket> openTicketsByID) {
         try {
-            MimeMessagePreparator preparator = new MimeMessagePreparator() {
-                public void prepare(MimeMessage mimeMessage) throws Exception {
-                    MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
-                    message.setTo(details.getRecipient());
-                    message.setSubject(details.getSubject());
-
-                    VelocityContext velocityContext = new VelocityContext();
-                    velocityContext.put("first_name", user.getFirstName());
-                    velocityContext.put("tickets", openTicketsByID.size() > 0? openTicketsByID : null);
-                    log.debug("openTicket size - {}", openTicketsByID.size());
-                    // signature
-                    createCommonMailSignature(velocityContext);
-                    // merge mail body
-                    StringWriter stringWriter = new StringWriter();
-                    velocityEngine.mergeTemplate("templates/nodal_officer_pending_ticket_mail.vm", "UTF-8", velocityContext, stringWriter);
-
-                    message.setText(stringWriter.toString(), true);
-                }
-            };
-            // Sending the mail
-            javaMailSender.send(preparator);
-            log.info("nodal_officer_pending_ticket mail Sent Successfully...");
+            prepareAndSendMailToUser(details, user, openTicketsByID);
         }
         // Catch block to handle the exceptions
         catch (Exception e) {
@@ -862,33 +841,59 @@ public class EmailServiceImpl implements EmailService {
     public void sendMailTicketAggregateMailToSecretary(EmailDetails details, User user,
                   List<org.upsmf.grievance.model.es.Ticket> openTicketsByID) {
         try {
-            MimeMessagePreparator preparator = new MimeMessagePreparator() {
-                public void prepare(MimeMessage mimeMessage) throws Exception {
-                    MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
-                    message.setTo(details.getRecipient());
-                    message.setSubject(details.getSubject());
-
-                    VelocityContext velocityContext = new VelocityContext();
-                    velocityContext.put("first_name", user.getFirstName());
-                    velocityContext.put("tickets", openTicketsByID.size() > 0? openTicketsByID : null);
-                    log.debug("openTicket size - {}", openTicketsByID.size());
-                    // signature
-                    createCommonMailSignature(velocityContext);
-                    // merge mail body
-                    StringWriter stringWriter = new StringWriter();
-                    velocityEngine.mergeTemplate("templates/nodal_officer_pending_ticket_mail.vm", "UTF-8", velocityContext, stringWriter);
-
-                    message.setText(stringWriter.toString(), true);
+            if(openTicketsByID == null || openTicketsByID.isEmpty()){
+                log.error("No tickets found to send out mail");
+            }
+            openTicketsByID.stream().forEach(ticket -> {
+                if(ticket.getAssignedToId() != null){
+                    if(ticket.getAssignedToId().equalsIgnoreCase("-1")) {
+                        List<User> grievanceNodal = findGrivanceNodal();
+                        if(grievanceNodal == null || grievanceNodal.isEmpty()) {
+                            ticket.setAssignedToName("NA");
+                        }
+                        Optional<User> optionalUser = grievanceNodal.stream().findFirst();
+                        if(optionalUser.isPresent()){
+                            ticket.setAssignedToName(optionalUser.get().getFirstName()+" "+optionalUser.get().getLastname());
+                        } else {
+                            ticket.setAssignedToName("NA");
+                        }
+                    }
+                } else {
+                    ticket.setAssignedToName("NA");
                 }
-            };
-            // Sending the mail
-            javaMailSender.send(preparator);
-            log.info("nodal_officer_pending_ticket mail Sent Successfully...");
+
+            });
+            prepareAndSendMailToUser(details, user, openTicketsByID);
         }
         // Catch block to handle the exceptions
         catch (Exception e) {
             log.error("Error while Sending Mail", e);
         }
+    }
+
+    private void prepareAndSendMailToUser(EmailDetails details, User user, List<org.upsmf.grievance.model.es.Ticket> openTicketsByID) {
+        MimeMessagePreparator preparator = new MimeMessagePreparator() {
+            public void prepare(MimeMessage mimeMessage) throws Exception {
+                MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+                message.setTo(details.getRecipient());
+                message.setSubject(details.getSubject());
+
+                VelocityContext velocityContext = new VelocityContext();
+                velocityContext.put("first_name", user.getFirstName());
+                velocityContext.put("tickets", openTicketsByID.size() > 0? openTicketsByID : null);
+                log.debug("openTicket size - {}", openTicketsByID.size());
+                // signature
+                createCommonMailSignature(velocityContext);
+                // merge mail body
+                StringWriter stringWriter = new StringWriter();
+                velocityEngine.mergeTemplate("templates/nodal_officer_pending_ticket_mail.vm", "UTF-8", velocityContext, stringWriter);
+
+                message.setText(stringWriter.toString(), true);
+            }
+        };
+        // Sending the mail
+        javaMailSender.send(preparator);
+        log.info("nodal_officer_pending_ticket mail Sent Successfully...");
     }
 
     @Override
