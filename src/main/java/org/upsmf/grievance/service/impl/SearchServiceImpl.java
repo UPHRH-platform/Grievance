@@ -113,7 +113,7 @@ public class SearchServiceImpl implements SearchService {
         search.searchType(SearchType.QUERY_THEN_FETCH);
         search.source(searchSourceBuilder);
 
-        log.info(">>>>>>>>>>>> Ticket query for id list - {}", searchSourceBuilder);
+        log.debug(">>>>>>>>>>>> Ticket query for id list - {}", searchSourceBuilder);
 
         try {
             SearchResponse searchResponse = esConfig.elasticsearchClient().search(search, RequestOptions.DEFAULT);
