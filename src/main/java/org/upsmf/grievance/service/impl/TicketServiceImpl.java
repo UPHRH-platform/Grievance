@@ -101,11 +101,15 @@ public class TicketServiceImpl implements TicketService {
         auditTicketSave(psqlTicket);
         // update attachments if present
         if(attachments != null) {
+            int count = 1;
             for(String url : attachments) {
                 RaiserTicketAttachment raiserTicketAttachment = RaiserTicketAttachment.builder()
                         .attachment_url(url)
                         .ticketId(ticket.getId())
                         .build();
+                String defaultName = "attachment".concat(String.valueOf(count++));
+                String name = extractAttachmentNameFromGCPURl(url, defaultName);
+                raiserTicketAttachment.setAttachmentName(name);
                 raiserTicketAttachmentRepository.save(raiserTicketAttachment);
             }
         }
@@ -114,6 +118,24 @@ public class TicketServiceImpl implements TicketService {
         // save ticket in ES
         esTicketRepository.save(esticket);
         return psqlTicket;
+    }
+
+    private static String extractAttachmentNameFromGCPURl(String url, String defaultName) {
+        Optional<String> optionalName = Arrays.stream(url.split("\\?")).findFirst();
+        String name = defaultName;
+        if(optionalName.isPresent()) {
+            String attachmentUrl = optionalName.get();
+            int lastIndexOf = attachmentUrl.lastIndexOf("/");
+            if (lastIndexOf + 1 < attachmentUrl.length()) {
+                name = attachmentUrl.substring(lastIndexOf + 1, attachmentUrl.length());
+                int separatorIndex = name.indexOf("_");
+                if(separatorIndex > 0) {
+                    name = name.substring(separatorIndex+1, name.length());
+                }
+                log.info("attachment name - {}", name);
+            }
+        }
+        return name;
     }
 
     /**
@@ -456,7 +478,6 @@ public class TicketServiceImpl implements TicketService {
                     sendReopenTicketMailToNodal(ticket, curentUpdatedTicket);
                 }
             }
-
             sendUpdateTicketMail(ticket, curentUpdatedTicket);
             return ticket;
         }
@@ -794,12 +815,15 @@ public class TicketServiceImpl implements TicketService {
             ticketAuditDto.setAttribute("ATTACHMENT");
             updateTicketAudit(ticketAuditDto, "" , " ",
                     "New attachment has been added");
-
+            int count = 1;
             for (String url : updateTicketRequest.getAssigneeAttachmentURLs()) {
                 AssigneeTicketAttachment assigneeTicketAttachment = AssigneeTicketAttachment.builder()
                         .userId(updateTicketRequest.getRequestedBy())
                         .ticketId(ticket.getId())
                         .attachment_url(url).build();
+                String defaultName = "attachment".concat(String.valueOf(count++));
+                String name = extractAttachmentNameFromGCPURl(url, defaultName);
+                assigneeTicketAttachment.setAttachmentName(name);
                 assigneeTicketAttachmentRepository.save(assigneeTicketAttachment);
             }
         }
