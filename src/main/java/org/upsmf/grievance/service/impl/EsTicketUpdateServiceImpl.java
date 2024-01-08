@@ -16,6 +16,7 @@ import org.upsmf.grievance.repository.es.TicketRepository;
 import org.upsmf.grievance.service.EsTicketUpdateService;
 import org.upsmf.grievance.service.SearchService;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -48,6 +49,13 @@ public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
             if (updateUserDto != null && updateUserDto.getId() != null
                     && !StringUtils.isBlank(updateUserDto.getFirstName()) && !StringUtils.isBlank(updateUserDto.getLastName())) {
                 List<Ticket> ticketList = ticketRepository.findAllByAssignedToId(String.valueOf(updateUserDto.getId()));
+                if(ticketList == null) {
+                    ticketList = new ArrayList<>();
+                }
+                List<Ticket> allJunkedTicketById = ticketRepository.findAllByJunkedBy(String.valueOf(updateUserDto.getId()));
+                if(allJunkedTicketById != null && !allJunkedTicketById.isEmpty()){
+                    ticketList.addAll(allJunkedTicketById);
+                }
 
                 Optional<User> userOptional = userRepository.findById(updateUserDto.getId());
                 if (userOptional.isPresent()) {
@@ -56,7 +64,10 @@ public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
                     if (userDepartment != null && "OTHER".equalsIgnoreCase(userDepartment.getDepartmentName())
                             && "OTHER".equalsIgnoreCase(userDepartment.getCouncilName())) {
 
-                        ticketList = ticketRepository.findAllByJunkedBy("-1");
+                        List<Ticket> allJunkedTicketList = ticketRepository.findAllByJunkedBy("-1");
+                        if(allJunkedTicketList != null && !allJunkedTicketList.isEmpty()){
+                            ticketList.addAll(allJunkedTicketList);
+                        }
                     }
 
                     if (ticketList != null && !ticketList.isEmpty()) {
@@ -97,6 +108,13 @@ public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
                     && !StringUtils.isBlank(updateUserDto.getFirstName()) && !StringUtils.isBlank(updateUserDto.getLastName())) {
 
                 List<Ticket> ticketList = ticketRepository.findAllByJunkedBy(String.valueOf(updateUserDto.getId()));
+                if(ticketList == null) {
+                    ticketList = new ArrayList<>();
+                }
+                List<Ticket> allJunkedTicketById = ticketRepository.findAllByJunkedBy(String.valueOf(updateUserDto.getId()));
+                if(allJunkedTicketById != null && !allJunkedTicketById.isEmpty()){
+                    ticketList.addAll(allJunkedTicketById);
+                }
 
                 Optional<User> userOptional = userRepository.findById(updateUserDto.getId());
                 if (userOptional.isPresent()) {
@@ -104,8 +122,11 @@ public class EsTicketUpdateServiceImpl implements EsTicketUpdateService {
 
                     if (userDepartment != null && "OTHER".equalsIgnoreCase(userDepartment.getDepartmentName())
                             && "OTHER".equalsIgnoreCase(userDepartment.getCouncilName())) {
-
-                        ticketList = ticketRepository.findAllByJunkedBy("-1");
+                        // find all tickets marked by -1
+                        List<Ticket> allJunkedTicketList = ticketRepository.findAllByJunkedBy("-1");
+                        if(allJunkedTicketList != null && !allJunkedTicketList.isEmpty()){
+                            ticketList.addAll(allJunkedTicketList);
+                        }
                     }
 
                     if (ticketList != null && !ticketList.isEmpty()) {
