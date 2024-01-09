@@ -1,12 +1,14 @@
 package org.upsmf.grievance.model;
 
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
+import java.sql.Timestamp;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -29,10 +31,10 @@ public class User {
 
     private String lastname;
 
-    @Column(nullable=false)
+    @Column(nullable = false)
     private String username;
 
-    @Column(nullable=false, unique=true)
+    @Column(nullable = false, unique = true)
     private String email;
 
     private boolean emailVerified;
@@ -60,6 +62,13 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
-   private Set<Role> rolesList = new HashSet<>();
+    private Set<Role> rolesList = new HashSet<>();
 
+    @CreationTimestamp
+    @Column(name = "created_date", nullable = false)
+    private Timestamp createdDate;
+
+    @UpdateTimestamp
+    @Column(name = "updated_date", nullable = false)
+    private Timestamp updatedDate;
 }

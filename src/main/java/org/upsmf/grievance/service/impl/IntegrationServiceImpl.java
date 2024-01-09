@@ -39,6 +39,7 @@ import org.upsmf.grievance.repository.RoleRepository;
 import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.repository.UserRoleRepository;
 import org.upsmf.grievance.service.*;
+import org.upsmf.grievance.util.DateUtil;
 import org.upsmf.grievance.util.ErrorCode;
 
 import javax.transaction.Transactional;
@@ -922,6 +923,8 @@ public class IntegrationServiceImpl implements IntegrationService {
                 .keycloakId(user.getKeycloakId())
                 .username(user.getUsername())
                 .attributes(attributeMap)
+                .createdDate(DateUtil.getFormattedDateInString(user.getCreatedDate()))
+                .updatedDate(DateUtil.getFormattedDateInString(user.getUpdatedDate()))
                 .build();
         return userResponseDto;
     }
