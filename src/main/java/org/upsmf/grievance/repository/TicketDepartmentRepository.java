@@ -30,11 +30,11 @@ public interface TicketDepartmentRepository extends PagingAndSortingRepository<T
                                                             @Param("councilId") Long councilId);
 
     @Query("SELECT d FROM TicketDepartment d WHERE d.ticketCouncilId =:councilId " +
-            "AND d.id = :departmentId " +
+            "AND d.id =:departmentId " +
             "AND LOWER(d.ticketDepartmentName) LIKE LOWER(CONCAT('%', :departmentName,'%'))" +
             "ORDER BY d.ticketDepartmentName ASC")
     List<TicketDepartment> freeTextSearchByNameAndCouncilIdAndDepartmentId(@Param("departmentName") String departmentName,
-                                                            @Param("councilId") Long councilId, @Param("departmentId") Long id);
+                                                            @Param("councilId") Long councilId, @Param("departmentId") Long departmentId);
 
     @Query("SELECT d FROM TicketDepartment d WHERE " +
             "LOWER(d.ticketDepartmentName) LIKE LOWER(CONCAT('%', :departmentName,'%'))" +
@@ -42,10 +42,9 @@ public interface TicketDepartmentRepository extends PagingAndSortingRepository<T
     List<TicketDepartment> freeTextSearchByName(@Param("departmentName") String departmentName);
 
     @Query("SELECT d FROM TicketDepartment d WHERE d.ticketCouncilId =:councilId " +
-            "AND d.id = :departmentId " +
+            "AND d.id =:departmentId " +
             "ORDER BY d.ticketDepartmentName ASC")
-    List<TicketDepartment> SearchByCouncilIdAndDepartmentId(@Param("councilId") Long councilId,
-                                                                           @Param("departmentId") Long id);
+    List<TicketDepartment> SearchByCouncilIdAndDepartmentId(@Param("councilId") Long councilId, @Param("departmentId") Long departmentId);
 
     @Query("SELECT d FROM TicketDepartment d WHERE LOWER(d.ticketDepartmentName) LIKE LOWER(CONCAT('%', ?1,'%'))")
     List<TicketDepartment> freeTextSearchByName(String departmentName, Pageable pageable);
