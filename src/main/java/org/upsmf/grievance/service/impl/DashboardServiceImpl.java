@@ -392,6 +392,7 @@ public class DashboardServiceImpl implements DashboardService {
         BoolQueryBuilder esQuery = createESQuery(filter, date);
         // adding condition to filter open ticket greater than 21 days
         esQuery.must(QueryBuilders.matchQuery("status", ticketStatus.name()));
+        log.debug("ES query - {}", esQuery);
         return executeQueryForCount(esQuery);
     }
 

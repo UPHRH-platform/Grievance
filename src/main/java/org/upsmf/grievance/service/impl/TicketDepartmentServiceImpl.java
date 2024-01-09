@@ -177,25 +177,43 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
 
     @Override
     public List<TicketDepartmentDto> freeTextSearchByName(AdminTextSearchDto adminTextSearchDto) {
+        List<TicketDepartment> ticketDepartmentList = null;
         if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())
-                && adminTextSearchDto.getCouncilId() != null) {
-
-            List<TicketDepartment> ticketDepartmentList = ticketDepartmentRepository
+                && adminTextSearchDto.getCouncilId() != null && adminTextSearchDto.getCouncilId() > 0) {
+            // search based on council ID and freeText
+            ticketDepartmentList = ticketDepartmentRepository
                     .freeTextSearchByNameAndCouncilId(adminTextSearchDto.getSearchKeyword(),
                             adminTextSearchDto.getCouncilId());
+        } else if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())
+                && adminTextSearchDto.getCouncilId() != null && adminTextSearchDto.getDepartmentId() != null
+                && adminTextSearchDto.getCouncilId() > 0 && adminTextSearchDto.getDepartmentId() > 0) {
+            // search based on council ID and department ID and free text
+            ticketDepartmentList = ticketDepartmentRepository.freeTextSearchByNameAndCouncilIdAndDepartmentId(adminTextSearchDto.getSearchKeyword(),
+                    adminTextSearchDto.getCouncilId(), adminTextSearchDto.getDepartmentId());
 
-            if (ticketDepartmentList != null && !ticketDepartmentList.isEmpty()) {
-
-                return ticketDepartmentList.stream()
-                        .map(ticketDepartment -> TicketDepartmentDto.builder()
-                                .ticketDepartmentId(ticketDepartment.getId())
-                                .ticketDepartmentName(ticketDepartment.getTicketDepartmentName())
-                                .ticketCouncilId(ticketDepartment.getTicketCouncilId())
-                                .ticketCouncilName(getCouncilName(ticketDepartment.getTicketCouncilId()))
-                                .status(ticketDepartment.getStatus())
-                                .build())
-                        .collect(Collectors.toList());
-            }
+        } else if (adminTextSearchDto != null && adminTextSearchDto.getCouncilId() != null && adminTextSearchDto.getDepartmentId() != null
+                && adminTextSearchDto.getCouncilId() > 0 && adminTextSearchDto.getDepartmentId() > 0) {
+            // search based on council ID and department ID
+            ticketDepartmentList = ticketDepartmentRepository.SearchByCouncilIdAndDepartmentId(adminTextSearchDto.getCouncilId(),
+                    adminTextSearchDto.getDepartmentId());
+        } else if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())) {
+            // search based on free text
+            ticketDepartmentList = ticketDepartmentRepository.freeTextSearchByName(adminTextSearchDto.getSearchKeyword());
+        } else if (adminTextSearchDto != null && adminTextSearchDto.getCouncilId() != null && adminTextSearchDto.getCouncilId() > 0) {
+            // search based on council ID
+            ticketDepartmentList = ticketDepartmentRepository.SearchByCouncilId(adminTextSearchDto.getCouncilId());
+        }
+        if (ticketDepartmentList != null && !ticketDepartmentList.isEmpty()) {
+            // create response
+            return ticketDepartmentList.stream()
+                    .map(ticketDepartment -> TicketDepartmentDto.builder()
+                            .ticketDepartmentId(ticketDepartment.getId())
+                            .ticketDepartmentName(ticketDepartment.getTicketDepartmentName())
+                            .ticketCouncilId(ticketDepartment.getTicketCouncilId())
+                            .ticketCouncilName(getCouncilName(ticketDepartment.getTicketCouncilId()))
+                            .status(ticketDepartment.getStatus())
+                            .build())
+                    .collect(Collectors.toList());
         }
         return Collections.emptyList();
     }

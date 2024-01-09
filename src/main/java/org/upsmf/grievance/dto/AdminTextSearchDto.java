@@ -13,4 +13,5 @@ public class AdminTextSearchDto {
     private Integer size;
     private Integer page;
     private Long councilId;
+    private Long departmentId;
 }
