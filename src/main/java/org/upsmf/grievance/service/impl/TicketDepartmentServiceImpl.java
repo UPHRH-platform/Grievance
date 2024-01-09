@@ -199,6 +199,9 @@ public class TicketDepartmentServiceImpl implements TicketDepartmentService {
         } else if (adminTextSearchDto != null && !StringUtils.isBlank(adminTextSearchDto.getSearchKeyword())) {
             // search based on free text
             ticketDepartmentList = ticketDepartmentRepository.freeTextSearchByName(adminTextSearchDto.getSearchKeyword());
+        } else if (adminTextSearchDto != null && adminTextSearchDto.getCouncilId() != null && adminTextSearchDto.getCouncilId() > 0) {
+            // search based on council ID
+            ticketDepartmentList = ticketDepartmentRepository.SearchByCouncilId(adminTextSearchDto.getCouncilId());
         }
         if (ticketDepartmentList != null && !ticketDepartmentList.isEmpty()) {
             // create response
