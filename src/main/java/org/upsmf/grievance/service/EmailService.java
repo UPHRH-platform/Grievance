@@ -49,4 +49,6 @@ public interface EmailService {
     void sendUnjunkMail(EmailDetails details, Ticket ticket);
 
     void sendEscalationMailToGrievanceNodal(EmailDetails details, Ticket ticket);
+
+    void sendCreateTicketOTPMail(String email, String otp, String recipientName, String subject, int otpExpirationMinutes);
 }
