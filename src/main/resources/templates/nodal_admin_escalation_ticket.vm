@@ -1,0 +1,170 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta content="telephone=no" name="format-detection">
+    <title></title>
+</head>
+
+<body style="background: #ffffff; padding: 50px">
+    <div class="es-wrapper-color">
+        <table class="es-wrapper" width="100%" cellspacing="0" cellpadding="0">
+            <tbody>
+                <tr>
+                    <td class="esd-email-paddings" valign="top">
+                        <table class="esd-header-popover es-header" cellspacing="0" cellpadding="0" align="center">
+                            <tbody>
+                                <tr>
+                                    <td class="esd-stripe" align="center">
+                                        <table class="es-header-body" width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center">
+                                            <tbody>
+                                                <tr>
+                                                    <td class="es-p20t es-p20r es-p20l esd-structure" align="left">
+                                                        <table class="es-left" cellspacing="0" cellpadding="0" align="left">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td class="es-m-p0r es-m-p20b esd-container-frame" width="180" valign="top" align="center">
+                                                                        <table width="100%" cellspacing="0" cellpadding="0">
+                                                                            <tbody>
+                                                                                <tr>
+                                                                                    <td align="center" class="esd-block-image" style="font-size: 0px;"><a target="_blank" href="https:// sitename.org"><img class="adapt-img" src="https://uphrh.in/assets/images/sunbird_logo.png" alt="sitename" style="display: block; width: 350px; padding: 50px 25px;" width="180" title="sitename"></a></td>
+                                                                                </tr>
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                        <!--[if mso]></td><td width="20"></td><td width="360" valign="top"><![endif]-->
+                                                        <table class="es-right" cellspacing="0" cellpadding="0" align="right">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td class="esd-container-frame" width="360" align="left">
+                                                                        <table width="100%" cellspacing="0" cellpadding="0">
+                                                                            <tbody>
+                                                                                <tr>
+                                                                                    <td align="center" class="esd-empty-container" style="display: none;"></td>
+                                                                                </tr>
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <table class="es-content" cellspacing="0" cellpadding="0" align="center">
+                            <tbody>
+                                <tr>
+                                    <td class="esd-stripe" align="center">
+                                        <table class="es-content-body" width="600" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center">
+                                            <tbody>
+                                                <tr>
+                                                    <td class="es-p20t es-p20r es-p20l esd-structure" align="left">
+                                                        <table width="100%" cellspacing="0" cellpadding="0">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td class="esd-container-frame" width="560" valign="top" align="center" style="padding: 0 50px;">
+                                                                        <table width="100%" cellspacing="0" cellpadding="0">
+                                                                            <tbody>
+                                                                                <tr>
+                                                                                    <td align="justify" class="esd-block-text es-m-txt-l">
+                                                                                        <p></br></p>
+                                                                                        <p>Dear Sir/Madam,</p>
+                                                                                        <p>We wanted to inform you about an escalation in the status of the grievance ticket with Grievance ID <strong>${id}</strong>, which is currently not assigned to any Nodal Officer. The details are as follows:</p>
+                                                                                        <p>
+                                                                                            <div>Grievance ID: <strong>${id}</strong></div>
+                                                                                            <div>Date Created: <strong>${created_date}</strong></div>
+                                                                                            <div>Status: <strong>${status}</strong></div>
+                                                                                        </p>
+                                                                                        <p>It is crucial that we address these concerns promptly to ensure customer satisfaction and maintain the high standards of service we strive to uphold. We kindly request you to assign these tickets to the respective Nodal Officers as per our established protocol.</p>
+                                                                                        <p>Thank you for your prompt action!</p>
+                                                                                        <p>Please be informed that this email has been generated by the system. If you have any queries or require clarification, kindly contact the administrator.</p>
+                                                                                    </td>
+                                                                                </tr>
+                                                                                <tr></tr>
+                                                                                <tr>
+                                                                                    <td align="left" class="esd-block-text">
+                                                                                        <p>Sincerely,</p>
+                                                                                        <p>
+                                                                                            <div>${signature_name}</div>
+                                                                                            <div>${address}</div>
+                                                                                            <div>${phone}</div>
+                                                                                            <div>${mobile}</div>
+                                                                                            <div>${fax}</div>
+                                                                                            <div>${email}</div>
+                                                                                        </p>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <table class="esd-footer-popover es-footer" cellspacing="0" cellpadding="0" align="center" bgcolor="#fdebe8">
+                <tbody>
+                    <tr>
+                        <td class="esd-stripe" align="center">
+                            <table class="es-footer-body" width="600" cellspacing="0" cellpadding="0" align="center" bgcolor="#ffffff" style="padding: 100px 50px;">
+                                <tbody>
+                                    <tr>
+                                        <td class="esd-structure es-p20t es-p20b es-p20r es-p20l" align="left">
+                                            <table class="es-left" cellspacing="0" cellpadding="0" align="center">
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="es-m-p20b esd-container-frame" width="400" align="left">
+                                                            <table width="100%" cellspacing="0" cellpadding="0">
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td align="center" class="esd-block-text">
+                                                                           <label _ngcontent-wjh-c12="" class="d-flex flex-w-wrap mb-16 flex-jc-center"><a _ngcontent-wjh-c12="" apptelemetryinteract="" href="/term-of-use.html"> Terms and Privacy </a><span _ngcontent-wjh-c12="">| © 2023, NIRAMAYA</span></label>
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </td>
+    </tr>
+</tbody>
+</table>
+</div>
+</body>
+</html>

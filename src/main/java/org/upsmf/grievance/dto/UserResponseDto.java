@@ -3,7 +3,6 @@ package org.upsmf.grievance.dto;
 import lombok.*;
 
 import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
 
 @Data
@@ -29,5 +28,11 @@ public class UserResponseDto implements Serializable {
 
     private boolean enabled;
 
-    private Map<String, List<String>> attributes;
+//    private Map<String, List<String>> attributes;
+
+    private Map<String, Object> attributes;
+
+    private String createdDate;
+
+    private String updatedDate;
 }

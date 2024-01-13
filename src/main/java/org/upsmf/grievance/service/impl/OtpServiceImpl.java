@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.upsmf.grievance.exception.DataUnavailabilityException;
 import org.upsmf.grievance.model.OtpRequest;
 import org.upsmf.grievance.model.RedisTicketData;
+import org.upsmf.grievance.service.EmailService;
 import org.upsmf.grievance.service.IntegrationService;
 import org.upsmf.grievance.service.OtpService;
 import org.upsmf.grievance.util.ErrorCode;
@@ -33,8 +34,14 @@ public class OtpServiceImpl implements OtpService {
     @Autowired
     private IntegrationService integrationService;
 
+    @Autowired
+    private EmailService emailService;
+
     @Value("${otp.expiration.minutes}")
     private int otpExpirationMinutes;
+
+    @Value("${otp.email.subject}")
+    private String otpEmailSubject;
 
     @Autowired
     public OtpServiceImpl(StringRedisTemplate redisTemplate, JavaMailSender mailSender) {
@@ -56,7 +63,7 @@ public class OtpServiceImpl implements OtpService {
         String redisKey = "otp:" + email;
         redisTemplate.opsForValue().set(redisKey, toJson(redisTicketData), otpExpirationMinutes, TimeUnit.MINUTES);
 
-        sendOtpEmail(email, otp);
+        sendOtpEmail(email, otp, otpRequest.getName());
         return otp;
     }
 
@@ -133,12 +140,8 @@ public class OtpServiceImpl implements OtpService {
         return otp.toString();
     }
 
-    private void sendOtpEmail(String email, String otp) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(email);
-        message.setSubject("Your OTP for Ticket Creation");
-        message.setText("Your OTP is: " + otp);
-        mailSender.send(message);
+    private void sendOtpEmail(String email, String otp, String name) {
+        emailService.sendCreateTicketOTPMail(email, otp, name, otpEmailSubject, otpExpirationMinutes);
     }
 
     @Override

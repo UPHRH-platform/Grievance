@@ -1,7 +1,7 @@
 package org.upsmf.grievance.dto;
 
 import lombok.*;
-import org.upsmf.grievance.model.Department;
+import org.upsmf.grievance.model.UserDepartment;
 
 @Getter
 @Setter
@@ -18,7 +18,7 @@ public class UserDto {
     private String email;
     private String password;
     private boolean emailVerified;
-    private Department department;
+    private UserDepartment userDepartment;
     private String[] roles;
 
 }

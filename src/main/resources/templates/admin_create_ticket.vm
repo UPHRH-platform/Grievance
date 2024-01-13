@@ -10,7 +10,7 @@
     <title></title>
 </head>
 
-<body style="background: #fdebe8; padding: 50px">
+<body style="background: #ffffff; padding: 50px">
     <div class="es-wrapper-color">
         <table class="es-wrapper" width="100%" cellspacing="0" cellpadding="0">
             <tbody>
@@ -85,13 +85,15 @@
                                                                                     <td align="justify" class="esd-block-text es-m-txt-l">
                                                                                         <p></br></p>
                                                                                         <p>Dear ${first_name},</p>
-                                                                                        <p>We hope this message finds you well. We wanted to inform you that a new grievance ticket has been created regarding [brief description of the issue].</br> The ticket has been assigned the following details:</p>
+                                                                                        <p>We hope this message finds you well. We wanted to inform you that a new grievance ticket has been created regarding ${ticket_description}.</br> The ticket has been assigned the following details:</p>
                                                                                         <p>
                                                                                             <div>Grievance ID: <strong>${id}</strong></div>
                                                                                             <div>Date Created: <strong>${created_date}</strong></div>
-                                                                                            <div>Priority: <strong>${priority}</strong></div>
-                                                                                            <div>Category: <strong>${department}</strong></div>
+                                                                                            <div>Date of Last Update: <strong>${updated_date}</strong></div>
                                                                                             <div>Status: <strong>${status}</strong></div>
+                                                                                            #if (${other_by})
+                                                                                                <div>Reason to mark other: <strong>${other_by_reason}</strong></div>
+                                                                                            #end
                                                                                         </p>
                                                                                         <p>Please review category of the grievance ticket and make the changes if required</p>
                                                                                     </td>

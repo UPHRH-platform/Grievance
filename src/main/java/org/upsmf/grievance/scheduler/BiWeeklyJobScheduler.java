@@ -11,8 +11,8 @@ import org.upsmf.grievance.constants.Constants;
 import org.upsmf.grievance.dto.SearchDateRange;
 import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.model.EmailDetails;
+import org.upsmf.grievance.service.DashboardService;
 import org.upsmf.grievance.service.EmailService;
-import org.upsmf.grievance.service.SearchService;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -25,7 +25,7 @@ import java.util.Map;
 public class BiWeeklyJobScheduler {
 
     @Autowired
-    private SearchService searchService;
+    private DashboardService dashboardService;
 
     @Autowired
     private EmailService emailService;
@@ -42,7 +42,7 @@ public class BiWeeklyJobScheduler {
         SearchRequest searchRequest = new SearchRequest();
         searchRequest.setDate(SearchDateRange.builder().to(Calendar.getInstance().getTimeInMillis())
                 .from(LocalDateTime.now().minusDays(14).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()).build());
-        Map<String, Object> response = searchService.dashboardReport(searchRequest);
+        Map<String, Object> response = dashboardService.dashboardReport(searchRequest);
         log.info("Response "+response);
 
         ObjectMapper objectMapper = new ObjectMapper();

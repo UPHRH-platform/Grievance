@@ -38,8 +38,8 @@ public class Ticket {
     @Column(name = "requester_email")
     private String email;
 
-    @Column(name = "requester_type")
-    private RequesterType requesterType;
+    @Column(name = "owner_email")
+    private String ownerEmail;
 
     @Column(name = "assigned_to_id")
     private String assignedToId;
@@ -52,6 +52,15 @@ public class Ticket {
 
     @Column(name = "junked_by")
     private String junkedBy;
+
+    @Column(name = "Junk_by_reason", length = 1000)
+    private String junkByReason;
+
+    @Column(name = "is_other")
+    private Boolean other = false;
+
+    @Column(name = "other_by_reason", length = 1000)
+    private String otherByReason;
 
 //    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss.S", timezone = "Asia/Kolkata")
     @Column(name = "created_date")
@@ -81,7 +90,7 @@ public class Ticket {
     private TicketStatus status = TicketStatus.OPEN;
 
     @Column(name = "request_type")
-    private String requestType;
+    private String requestType;         //TODO: rkr: userDepartment replace with configurable userDepartment
 
     @Column(name = "priority")
     private TicketPriority priority = TicketPriority.LOW;
@@ -104,4 +113,13 @@ public class Ticket {
     @OneToMany(targetEntity = AssigneeTicketAttachment.class, mappedBy = "ticketId", fetch = FetchType.EAGER)
     @Fetch(value = FetchMode.SUBSELECT)
     private List<AssigneeTicketAttachment> assigneeTicketAttachment;
+
+    @ManyToOne(targetEntity = TicketUserType.class, fetch = FetchType.EAGER)
+    private TicketUserType ticketUserType;
+
+    @ManyToOne(targetEntity = TicketCouncil.class, fetch = FetchType.EAGER)
+    private TicketCouncil ticketCouncil;
+
+    @ManyToOne(targetEntity = TicketDepartment.class, fetch = FetchType.EAGER)
+    private TicketDepartment ticketDepartment;
 }

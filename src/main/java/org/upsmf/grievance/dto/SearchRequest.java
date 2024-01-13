@@ -12,6 +12,7 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString
+@Builder
 public class SearchRequest {
 
     private String searchKeyword;
@@ -37,5 +38,7 @@ public class SearchRequest {
     private int size;
 
     private Map<String, String> sort;
+
+    private Long ticketUserTypeId;
 
 }

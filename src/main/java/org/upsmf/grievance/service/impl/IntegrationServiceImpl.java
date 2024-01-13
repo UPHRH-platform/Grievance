@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.gax.rpc.NotFoundException;
-import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,25 +31,20 @@ import org.upsmf.grievance.dto.UpdateUserDto;
 import org.upsmf.grievance.dto.UserCredentials;
 import org.upsmf.grievance.dto.UserResponseDto;
 import org.upsmf.grievance.enums.Department;
-import org.upsmf.grievance.exception.CustomException;
-import org.upsmf.grievance.exception.OtpException;
-import org.upsmf.grievance.exception.UserException;
+import org.upsmf.grievance.exception.*;
 import org.upsmf.grievance.exception.runtime.InvalidRequestException;
-import org.upsmf.grievance.model.OtpRequest;
-import org.upsmf.grievance.model.Role;
-import org.upsmf.grievance.model.User;
-import org.upsmf.grievance.model.UserRole;
-import org.upsmf.grievance.repository.DepartmentRepository;
+import org.upsmf.grievance.model.*;
+import org.upsmf.grievance.repository.UserDepartmentRepository;
 import org.upsmf.grievance.repository.RoleRepository;
 import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.repository.UserRoleRepository;
-import org.upsmf.grievance.service.IntegrationService;
+import org.upsmf.grievance.service.*;
+import org.upsmf.grievance.util.DateUtil;
 import org.upsmf.grievance.util.ErrorCode;
 
 import javax.transaction.Transactional;
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -129,10 +123,22 @@ public class IntegrationServiceImpl implements IntegrationService {
     private RoleRepository roleRepository;
 
     @Autowired
-    private DepartmentRepository departmentRepository;
+    private UserDepartmentRepository userDepartmentRepository;
 
     @Autowired
     private JavaMailSender mailSender;
+
+    @Autowired
+    private TicketDepartmentService ticketDepartmentService;
+
+    @Autowired
+    private TicketCouncilService ticketCouncilService;
+
+    @Autowired
+    private EsTicketUpdateService esTicketUpdateService;
+
+    @Autowired
+    private EmailService emailService;
 
     @Override
     public User addUser(User user) {
@@ -143,21 +149,16 @@ public class IntegrationServiceImpl implements IntegrationService {
     public ResponseEntity<User> createUser(CreateUserDto user) throws Exception {
         validateUserPayload(user);
         checkUserInCenterUM(user.getUsername());
-        // check for department
+        // check for userDepartment
         String module = user.getAttributes().get("module");
         if (module != null) {
             user.getAttributes().put("module", module);
         } else {
             user.getAttributes().put("module", "grievance");
         }
-        String departmentName = user.getAttributes().get("departmentName");
-        List<Department> departmentList = new ArrayList<>();
-        if (departmentName != null) {
-            departmentList = Department.getById(Integer.valueOf(departmentName));
-            if (departmentList != null && !departmentList.isEmpty()) {
-                user.getAttributes().put("departmentName", departmentList.get(0).getCode());
-            }
-        }
+
+        Map<String, String> attributeMap = processUserDepartmentAndCouncil(user.getAttributes());
+
         String generatePassword = validateAndCreateDefaultPassword(user);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -193,19 +194,28 @@ public class IntegrationServiceImpl implements IntegrationService {
                 if (getUsersJsonNode.size() > 0) {
                     JsonNode userContentData = getUsersJsonNode;
                     User newUser = createUserWithApiResponse(userContentData);
+
+                    // create user userDepartment mapping
+                    if (attributeMap.get("departmentId") != null) {
+                        UserDepartment userDepartment = UserDepartment.builder()
+                                .departmentId(Long.valueOf(attributeMap.get("departmentId")))
+                                .departmentName(attributeMap.get("departmentName"))
+                                .councilId(Long.valueOf(attributeMap.get("councilId")))
+                                .councilName(attributeMap.get("councilName"))
+//                            .userId(savedUser.getId())
+                                .build();
+
+                        UserDepartment savedUserDepartment = userDepartmentRepository.save(userDepartment);
+                        newUser.setUserDepartment(savedUserDepartment);
+                    }
+
                     User savedUser = userRepository.save(newUser);
                     // create user role mapping
-                    //createUserRoleMapping(user, savedUser);
-                    // create user department mapping
-                    if (savedUser != null && savedUser.getId() > 0 && departmentList != null && !departmentList.isEmpty()) {
-                        org.upsmf.grievance.model.Department departmentMap = org.upsmf.grievance.model.Department.builder().departmentName(departmentList.get(0).getCode()).userId(savedUser.getId()).build();
-                        org.upsmf.grievance.model.Department userDepartment = departmentRepository.save(departmentMap);
-                        List<org.upsmf.grievance.model.Department> departments = new ArrayList<>();
-                        departments.add(userDepartment);
-                        savedUser.setDepartment(departments);
-                    }
+                    createUserRoleMapping(user, savedUser);
+
                     // send mail with password
-                    sendCreateUserEmail(savedUser.getEmail(), savedUser.getUsername(), generatePassword);
+//                    sendCreateUserEmail(savedUser.getEmail(), savedUser.getUsername(), generatePassword);
+                    emailService.sendUserCreationMail(savedUser, generatePassword);
                     return new ResponseEntity<>(savedUser, HttpStatus.OK);
                 }
                 return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -216,6 +226,78 @@ public class IntegrationServiceImpl implements IntegrationService {
         } else {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+
+    /**
+     * @param attributeMap
+     * @return
+     */
+    private Map<String, String> processUserDepartmentAndCouncil(Map<String, String> attributeMap) {
+        if (attributeMap != null) {
+            if (( attributeMap.containsKey("departmentId") && !attributeMap.containsKey("councilId") )
+                    || ( !attributeMap.containsKey("departmentId") && attributeMap.containsKey("councilId") ) ) {
+                log.error("Missing one of attrbutes department id or council id - both are allowed or none");
+                throw new InvalidDataException("Both council and department id are allowed or none");
+            }
+
+            if (attributeMap.containsKey("departmentId") && attributeMap.containsKey("councilId")
+                    && attributeMap.get("departmentId") != null && attributeMap.get("councilId") != null) {
+                try {
+                    Long departmentId = Long.valueOf(attributeMap.get("departmentId"));
+                    Long councilId = Long.valueOf(attributeMap.get("councilId"));
+
+                    boolean validDepartment = ticketDepartmentService.validateDepartmentInCouncil(departmentId, councilId);
+
+                    if (!validDepartment) {
+                        log.error("Failed to validate department id and council id");
+                        throw new InvalidDataException("Failed to validate department and coucil id mapping");
+                    }
+
+                    String departmentName = ticketDepartmentService.getDepartmentName(departmentId, councilId);
+                    String councilName = ticketCouncilService.getCouncilName(councilId);
+
+//                  Prevent creating multiple grievance nodal admin
+                    if (findGrievanceNodalAdmin(departmentName).isPresent()) {
+                        log.error("User has already been created for other department");
+                        throw new InvalidDataException("User has already been created for other department");
+                    }
+
+                    attributeMap.put("departmentId", String.valueOf(departmentId));
+                    attributeMap.put("departmentName", departmentName);
+                    attributeMap.put("councilId", String.valueOf(councilId));
+                    attributeMap.put("councilName", councilName);
+
+                    return attributeMap;
+                } catch (NumberFormatException e) {
+                    log.error("Error while parsing departmetn | council id");
+                    throw new InvalidDataException("Department | coucil id only support number");
+                } catch (CustomException e) {
+                    log.error("Error while checking department and council for user");
+                    throw new DataUnavailabilityException(e.getMessage(), "Error while checking department and council for user");
+                } catch (Exception e) {
+                    log.error("Error while calculating department and council details");
+                    throw new DataUnavailabilityException("Unable to get department | council details");
+                }
+            }
+        }
+        return Collections.emptyMap();
+    }
+
+    /**
+     * @param departmentName
+     * @return
+     */
+    private Optional<User> findGrievanceNodalAdmin(@NonNull String departmentName) {
+        if ("OTHER".equalsIgnoreCase(departmentName)) {
+            Optional<UserDepartment> userDepartmentOptional = userDepartmentRepository
+                    .findByCouncilNameAndCouncilName("OTHER", "OTHER");
+
+            if (userDepartmentOptional.isPresent()) {
+                return userRepository.findByUserDepartment(userDepartmentOptional.get());
+            }
+        }
+        return Optional.empty();
     }
 
     private void validateUserPayload(CreateUserDto userDto) {
@@ -252,6 +334,49 @@ public class IntegrationServiceImpl implements IntegrationService {
 
         if (StringUtils.isEmpty(attributeMap.get("Role"))  ) {
             throw new UserException("Role is missing", ErrorCode.USER_002);
+        }
+
+        String role = userDto.getAttributes().get(ROLE);
+
+        if (role != null && !role.isBlank() && ("SUPERADMIN".equalsIgnoreCase(role) || "ADMIN".equalsIgnoreCase(role))) {
+            Role roleDetails = roleRepository.findByName(role);
+
+            if(roleDetails == null) {
+                log.warn("SUPERADMIN/ADMIN role is not available");
+                throw new UserException("SUPERADMIN/ADMIN Role is missing", ErrorCode.USER_002);
+            }
+
+            List<UserRole> userRoleList = userRoleRepository.findByRoleId(roleDetails.getId());
+
+            if (userRoleList == null || userRoleList.isEmpty()) {
+                log.info("Unable to find UserRole record");
+                return;
+            }
+
+            List<Long> userIdList = userRoleList.stream()
+                    .map(userRole -> userRole.getUserId())
+                    .collect(Collectors.toList());
+
+            List<User> userList = userRepository.findAllUserInIds(userIdList);
+
+            if (userList == null || userList.isEmpty()) {
+                log.info("There is broken mapping with user and userRole mapping");
+                return;
+            }
+
+            Optional<User> userOptional = userList.stream()
+                    .filter(user -> user.getStatus() == 1)
+                    .findAny();
+
+            if (userOptional.isPresent()) {
+                if (("SUPERADMIN".equalsIgnoreCase(role))) {
+                    throw new UserException("Secratary already exist", ErrorCode.USER_002);
+                }
+
+                if (("ADMIN".equalsIgnoreCase(role))) {
+                    throw new UserException("Admin already exist", ErrorCode.USER_002);
+                }
+            }
         }
     }
 
@@ -353,7 +478,7 @@ public class IntegrationServiceImpl implements IntegrationService {
     }
 
     private static void getCreateUserRequest(CreateUserDto user, List<Department> departmentList) {
-        // check for department
+        // check for userDepartment
         String module = user.getAttributes().get("module");
         if (module != null) {
             user.getAttributes().put("module", module);
@@ -390,16 +515,6 @@ public class IntegrationServiceImpl implements IntegrationService {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            String departmentName = userDto.getAttributes().get("departmentName");
-            List<Department> departmentList = new ArrayList<>();
-            if (departmentName != null) {
-                departmentList = Department.getById(Integer.valueOf(departmentName));
-                if (departmentList != null && !departmentList.isEmpty()) {
-                    userDto.getAttributes().put("departmentName", departmentList.get(0).getCode());
-                }
-            } else {
-                userDto.getAttributes().put("departmentName", null);
-            }
 
             JsonNode root = mapper.createObjectNode();
             JsonNode jsonNodeObject = mapper.convertValue(userDto, JsonNode.class);
@@ -408,10 +523,17 @@ public class IntegrationServiceImpl implements IntegrationService {
             ((ObjectNode) root).put("userName", userDto.getKeycloakId());
             ((ObjectNode) root).put("request", jsonNodeObject);
             restTemplate.put(updateUserUrl, root);
-            // update postgres db
+
+            // update postgres db and also update user department in below call.
+            // Removed old user department mapping that was happening above
             updateUserData(userDto);
+
+            esTicketUpdateService.updateEsTicketByUserId(userDto);
+            esTicketUpdateService.updateJunkByEsTicketByUserId(userDto);
+
             return ResponseEntity.ok().body("User updated successful");
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException(e.getLocalizedMessage());
         }
     }
@@ -435,28 +557,58 @@ public class IntegrationServiceImpl implements IntegrationService {
                 String[] role = new String[1];
                 role[0] = userDto.getAttributes().get("Role");
                 userDetails.setRoles(role);
-                if (role[0].equalsIgnoreCase("SUPERADMIN")) {
-                    departmentRepository.deleteByUserId(userDetails.getId());
+                if (role[0].equalsIgnoreCase("SUPERADMIN") && userDetails.getUserDepartment() != null) {
+//                  Replacing user departmetn mapping in case of super admin
+                    userDepartmentRepository.deleteById(userDetails.getUserDepartment().getId());
                 }
             }
             // updating user
             userDetails = userRepository.save(userDetails);
 
             // updating user department mapping
-            if (userDto.getAttributes() != null && !userDto.getAttributes().isEmpty() && userDto.getAttributes().containsKey("departmentName")) {
-                String departmentName = userDto.getAttributes().get("departmentName");
-                if(departmentName != null) {
-                    List<Department> departmentList = Department.getByCode(String.valueOf(departmentName));
-                    if (departmentList != null && !departmentList.isEmpty()) {
-                        org.upsmf.grievance.model.Department userDepartment = departmentRepository.findByUserId(userDetails.getId());
-                        if (userDepartment != null) {
-                            userDepartment.setDepartmentName(departmentList.get(0).getCode());
-                            userDepartment = departmentRepository.save(userDepartment);
-                        }
-                    }
-                }
+            updateUserDepartmentForUser(userDto.getAttributes(), userDetails);
+        }
+    }
+
+    private void updateUserDepartmentForUser(Map<String, String> attributeMap, User user){
+        if (attributeMap != null) {
+            if ((attributeMap.containsKey("departmentId") && !attributeMap.containsKey("councilId"))
+                    || (!attributeMap.containsKey("departmentId") && attributeMap.containsKey("councilId"))) {
+                log.error("Missing one of attrbutes department id or council id - both are allowed or none");
+                throw new InvalidDataException("Both council and department id are allowed or none");
             }
 
+            if (attributeMap.containsKey("departmentId") && attributeMap.containsKey("councilId")
+                    && attributeMap.get("departmentId") != null && attributeMap.get("councilId") != null) {
+                try {
+                    Long departmentId = Long.valueOf(attributeMap.get("departmentId"));
+                    Long councilId = Long.valueOf(attributeMap.get("councilId"));
+
+                    boolean validDepartment = ticketDepartmentService.validateDepartmentInCouncil(departmentId, councilId);
+
+                    if (!validDepartment) {
+                        log.error("Failed to validate department id and council id");
+                        throw new InvalidDataException("Failed to validate department and coucil id mapping");
+                    }
+
+                    String departmentName = ticketDepartmentService.getDepartmentName(departmentId, councilId);
+                    String councilName = ticketCouncilService.getCouncilName(councilId);
+
+                    UserDepartment userDepartment = user.getUserDepartment();
+                    userDepartment.setDepartmentId(departmentId);
+                    userDepartment.setDepartmentName(departmentName);
+                    userDepartment.setCouncilId(councilId);
+                    userDepartment.setCouncilName(councilName);
+
+                    UserDepartment savedUserDepartment = userDepartmentRepository.save(userDepartment);
+                } catch (NumberFormatException e) {
+                    log.error("Error while parsing department | council id");
+                    throw new InvalidDataException("Department | coucil id only support number");
+                } catch (Exception e) {
+                    log.error("Error while calculating department and council details", e);
+                    throw new DataUnavailabilityException("Unable to get department | council details");
+                }
+            }
         }
     }
 
@@ -485,6 +637,45 @@ public class IntegrationServiceImpl implements IntegrationService {
         ArrayNode nodes = mapper.valueToTree(childNodes);
         ((ObjectNode) userResponse).put("result", nodes);
         return ResponseEntity.ok(mapper.writeValueAsString(userResponse));
+    }
+
+    @Override
+    public List<UserResponseDto> getUserByCouncilAndDepartment(Long departmentId, Long councilId, Optional<Boolean> allUserOptional) {
+        List<UserResponseDto> userResponseDtoList = new ArrayList<>();
+
+        try {
+            boolean validDepartment = ticketDepartmentService.validateDepartmentInCouncil(departmentId, councilId);
+
+            if (!validDepartment) {
+                log.error("Failed to validate department id and council id");
+                throw new InvalidDataException("Failed to validate department and coucil id mapping");
+            }
+
+            List<UserDepartment> userDepartmentList = userDepartmentRepository
+                    .findAllByDepartmentIdAndCouncilId(departmentId, councilId);
+
+            if (userDepartmentList != null && !userDepartmentList.isEmpty()) {
+                List<User> userList = userRepository.findAllByUserDepartmentIn(userDepartmentList);
+
+                if (userList != null && !userList.isEmpty()) {
+                    if (allUserOptional.isPresent() && Boolean.TRUE.equals(allUserOptional.get())) {
+                        userResponseDtoList = userList.stream()
+                                .map(user -> createUserResponse(user))
+                                .collect(Collectors.toList());
+                    } else {
+                        userResponseDtoList = userList.stream()
+                                .filter(user -> user.getStatus() == 1) //Used premitive type in entity - validation not needed
+                                .map(user -> createUserResponse(user))
+                                .collect(Collectors.toList());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error while fetching user list based on department id and council id", e);
+            throw new DataUnavailabilityException("Unable to get user detils");
+        }
+
+        return userResponseDtoList;
     }
 
     @Override
@@ -610,6 +801,7 @@ public class IntegrationServiceImpl implements IntegrationService {
                     );
                     if (response.getStatusCode() == HttpStatus.OK) {
                         userDetails.setStatus(1);
+                        emailService.sendUserActivationMail(userDetails, true);
                         return userRepository.save(userDetails);
                     }
                     throw new RuntimeException("Error in activating user.");
@@ -643,6 +835,7 @@ public class IntegrationServiceImpl implements IntegrationService {
                             new HttpEntity<>(request, headers), String.class);
                     if (response.getStatusCode() == HttpStatus.OK) {
                         userDetails.setStatus(0);
+                        emailService.sendUserActivationMail(userDetails, false);
                         return userRepository.save(userDetails);
                     }
                     throw new RuntimeException("Error in deactivating user.");
@@ -695,31 +888,43 @@ public class IntegrationServiceImpl implements IntegrationService {
 
     }
 
-    private UserResponseDto createUserResponse(User body) {
-        Map<String, List<String>> attributes = new HashMap<>();
-        attributes.put("Role", Arrays.asList(body.getRoles()));
-        List<String> department = new ArrayList<>();
-        if (body.getDepartment() != null && !body.getDepartment().isEmpty()) {
-            for (org.upsmf.grievance.model.Department depart : body.getDepartment()) {
-                department.add(depart.getDepartmentName());
-            }
+    private UserResponseDto createUserResponse(User user) {
+//        Set department name and department id
+
+        Map<String, Object> attributeMap = new HashMap<>();
+        attributeMap.put("phoneNumber", user.getPhoneNumber());
+        attributeMap.put("role", user.getRoles());
+
+        UserDepartment userDepartment = user.getUserDepartment();
+
+        if (userDepartment != null) {
+            attributeMap.put("departmentId", userDepartment.getDepartmentId());
+            attributeMap.put("departmentName", userDepartment.getDepartmentName());
+            attributeMap.put("councilId", userDepartment.getCouncilId());
+            attributeMap.put("councilName", userDepartment.getCouncilName());
+        } else {
+            attributeMap.put("departmentId", null);
+            attributeMap.put("departmentName", null);
+            attributeMap.put("councilId", null);
+            attributeMap.put("councilName", null);
         }
-        attributes.put("departmentName", department);
-        attributes.put("phoneNumber", Arrays.asList(body.getPhoneNumber()));
+
         boolean enabled = false;
-        if (body.getStatus() == 1) {
+        if (user.getStatus() == 1) {
             enabled = true;
         }
         UserResponseDto userResponseDto = UserResponseDto.builder()
-                .email(body.getEmail())
-                .emailVerified(body.isEmailVerified())
+                .email(user.getEmail())
+                .emailVerified(user.isEmailVerified())
                 .enabled(enabled)
-                .firstName(body.getFirstName())
-                .lastName(body.getLastname())
-                .id(body.getId())
-                .keycloakId(body.getKeycloakId())
-                .username(body.getUsername())
-                .attributes(attributes)
+                .firstName(user.getFirstName())
+                .lastName(user.getLastname())
+                .id(user.getId())
+                .keycloakId(user.getKeycloakId())
+                .username(user.getUsername())
+                .attributes(attributeMap)
+                .createdDate(DateUtil.getFormattedDateInString(user.getCreatedDate()))
+                .updatedDate(DateUtil.getFormattedDateInString(user.getUpdatedDate()))
                 .build();
         return userResponseDto;
     }
@@ -801,4 +1006,22 @@ public class IntegrationServiceImpl implements IntegrationService {
         }
     }
 
+    @Override
+    public List<User> getAllUsersByRole(String role) {
+        List<User> allActiveUsers = userRepository.findAllActiveUsers();
+        if(allActiveUsers == null) {
+            return new ArrayList<>();
+        }
+        List<User> users = allActiveUsers.stream().filter(x -> Arrays.stream(x.getRoles()).anyMatch(userRole -> userRole.equalsIgnoreCase(role))).collect(Collectors.toList());
+        return users;
+    }
+
+    @Override
+    public ResponseEntity<Boolean> getUserStatusByEmail(String userName) {
+        Optional<User> user = userRepository.findByUsernameAndStatus(userName, 1);
+        if(user.isPresent()) {
+            return ResponseEntity.ok(Boolean.TRUE);
+        }
+        return ResponseEntity.ok(Boolean.FALSE);
+    }
 }

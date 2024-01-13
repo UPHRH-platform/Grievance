@@ -24,4 +24,9 @@ public class UpdateTicketRequest {
     private List<String> assigneeAttachmentURLs;
     private Boolean isJunk;
     private Boolean isNudged;
+    private Boolean isOther;
+    private String junkByReason;
+    private String otherByReason;
+    private Long ticketCouncilId;
+    private Long ticketDepartmentId;
 }

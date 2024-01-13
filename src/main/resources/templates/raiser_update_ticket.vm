@@ -10,7 +10,7 @@
     <title></title>
 </head>
 
-<body style="background: #fdebe8; padding: 50px">
+<body style="background: #ffffff; padding: 50px">
     <div class="es-wrapper-color">
         <table class="es-wrapper" width="100%" cellspacing="0" cellpadding="0">
             <tbody>
@@ -93,6 +93,9 @@
                                                                                             <div>Date of Registration: <strong>${created_date}</strong></div>
                                                                                             <div>Current Status: <strong>${status}</strong></div>
                                                                                             <div>Date of Last Update: <strong>${updated_date}</strong></div>
+                                                                                            #if (${other_by})
+                                                                                                <div>Reason to mark other: <strong>${other_by_reason}</strong></div>
+                                                                                            #end
                                                                                         </p>
                                                                                         <p>Our support team is continuously monitoring the situation to ensure that all necessary steps are taken to address your concerns effectively and efficiently. Rest assured; we are committed to providing you with the best possible resolution.</p>
                                                                                         <p>If you have any additional information or updates that could be helpful for our team to better understand your issue, please feel free to share it with us. Your input is valuable and can contribute to a swifter resolution.</p>

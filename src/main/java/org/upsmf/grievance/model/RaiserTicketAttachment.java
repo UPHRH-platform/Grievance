@@ -20,6 +20,10 @@ public class RaiserTicketAttachment {
     @Column(name = "ticket_id", nullable = false)
     private Long ticketId;
 
+//    @Lob
     @Column(name = "attachment_url", nullable = false)
     private String attachment_url;
+
+    @Column(name = "attachment_name", nullable = false)
+    private String attachmentName;
 }
