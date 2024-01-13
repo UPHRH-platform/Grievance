@@ -80,6 +80,9 @@ public class TicketServiceImpl implements TicketService {
     @Value("${feedback.base.url}")
     private String feedbackBaseUrl;
 
+    @Value("${ticket.otp.enable}")
+    private Boolean otpEnabled = true;
+
     @Autowired
     private EmailService emailService;
 
@@ -178,17 +181,19 @@ public class TicketServiceImpl implements TicketService {
         validateTicketRequest(ticketRequest);
 
         // validate OTP
-        boolean isValid = otpService.validateOtp(ticketRequest.getEmail(), ticketRequest.getOtp());
-        if(!isValid) {
-            throw new TicketException("Invalid mail OTP, Please enter correct OTP", ErrorCode.TKT_001,
-                    "Error while matching mail OTP");
-        } else {
-            boolean isMobileOtpValid = otpService.validateMobileOtp(ticketRequest.getPhone(),
-                    ticketRequest.getMobileOtp());
+        if(otpEnabled) {
+            boolean isValid = otpService.validateOtp(ticketRequest.getEmail(), ticketRequest.getOtp());
+            if(!isValid) {
+                throw new TicketException("Invalid mail OTP, Please enter correct OTP", ErrorCode.TKT_001,
+                        "Error while matching mail OTP");
+            } else {
+                boolean isMobileOtpValid = otpService.validateMobileOtp(ticketRequest.getPhone(),
+                        ticketRequest.getMobileOtp());
 
-            if (!isMobileOtpValid) {
-                throw new TicketException("Invalid mobile OTP, Please enter correct OTP", ErrorCode.TKT_001,
-                        "Error while matching mobile OTP");
+                if (!isMobileOtpValid) {
+                    throw new TicketException("Invalid mobile OTP, Please enter correct OTP", ErrorCode.TKT_001,
+                            "Error while matching mobile OTP");
+                }
             }
         }
         // set default value for creating ticket
