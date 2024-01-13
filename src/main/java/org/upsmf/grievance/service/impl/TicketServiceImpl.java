@@ -80,6 +80,9 @@ public class TicketServiceImpl implements TicketService {
     @Value("${feedback.base.url}")
     private String feedbackBaseUrl;
 
+    @Value("${ticket.otp.enable}")
+    private Boolean otpEnabled = true;
+
     @Autowired
     private EmailService emailService;
 
