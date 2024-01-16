@@ -10,6 +10,6 @@ import java.util.List;
 @Repository
 public interface FeedbackRepository extends ElasticsearchRepository<Feedback, String> {
 
-    @Query("{'ticket_id': ?0}")
-    List<Feedback> findAllByTicketId(String id);
+    //@Query("{'ticket_id': ?0}")
+    List<Feedback> findAllByTicketId(String ticketId);
 }
