@@ -967,8 +967,8 @@ public class IntegrationServiceImpl implements IntegrationService {
                     new HttpEntity<>(null), JsonNode.class);
         } catch (Exception e) {
             log.error("Error while calling external OTP service", e);
-            throw new OtpException("Error reponse from external service", ErrorCode.OTP_004,
-                    "While calling upsmf otp servcie it's thrwoing 400 or 500 response");
+            throw new OtpException("Error response from external service", ErrorCode.OTP_004,
+                    "While calling UPSMF otp service it's throwing 400 or 500 response");
         }
 
         processResponseMessage(response);
