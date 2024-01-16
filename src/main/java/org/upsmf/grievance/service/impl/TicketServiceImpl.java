@@ -136,9 +136,22 @@ public class TicketServiceImpl implements TicketService {
                     name = name.substring(separatorIndex+1, name.length());
                 }
                 log.info("attachment name - {}", name);
+                // remove encoded string from name
+                removeEncodedCharecters(name);
             }
         }
         return name;
+    }
+
+    private static void removeEncodedCharecters(String name) {
+        name.replace("%20", " ");
+        name.replace("%28", "(");
+        name.replace("%29", ")");
+        name.replace("%2D", "-");
+        name.replace("%5F", "_");
+        name.replace("%22", "_");
+        name.replace("%2A", "_");
+        name.replace("%2B", "_");
     }
 
     /**

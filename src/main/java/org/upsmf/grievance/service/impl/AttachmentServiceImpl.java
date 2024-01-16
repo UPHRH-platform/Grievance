@@ -98,6 +98,7 @@ public class AttachmentServiceImpl implements AttachmentService {
             String urlString = url.toURI().toString();
             ObjectNode urlNode = mapper.createObjectNode();
             urlNode.put("url", urlString);
+            urlNode.put("file_name", fileName);
             ObjectNode node = mapper.createObjectNode();
             node.put("result", urlNode);
             return ResponseEntity.ok(mapper.writeValueAsString(node));
