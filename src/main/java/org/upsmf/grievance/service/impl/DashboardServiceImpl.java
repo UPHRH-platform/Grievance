@@ -494,7 +494,7 @@ public class DashboardServiceImpl implements DashboardService {
         // get closed ticket count
         long totalClosedTicketCount = getTicketCountByTicketStatus(filter, date, TicketStatus.CLOSED);
         // get junked ticket count
-        long totalJunkedTicketCount = getTicketCountByTicketStatus(filter, date, TicketStatus.CLOSED);
+        long totalJunkedTicketCount = getTicketCountByTicketStatus(filter, date, TicketStatus.INVALID);
         // get open and unassigned ticket count
         long totalOpenUnassignedTicketCount = getUnassignedTicketCountByTicketStatus(filter, date, TicketStatus.OPEN);
         // create response
