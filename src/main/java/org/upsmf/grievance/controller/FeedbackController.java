@@ -1,5 +1,6 @@
 package org.upsmf.grievance.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import javax.validation.Valid;
 @Controller
 @RequestMapping("/api/feedback")
 @Validated
+@Slf4j
 public class FeedbackController {
 
     @Autowired
@@ -34,7 +36,9 @@ public class FeedbackController {
     @PostMapping("/id")
     public ResponseEntity saveFeedback(@Valid @RequestParam(name = "id") String id) {
         try {
+            log.info(" get feedback by ID payload - {} ", id);
             FeedbackResponse feedbackByTicketId = feedbackService.getFeedbackByTicketId(id);
+            log.info(" get feedback by ID response - {} ", feedbackByTicketId);
             return new ResponseEntity(new Response(HttpStatus.OK.value(), feedbackByTicketId), HttpStatus.OK);
         }catch (Exception e){
             return new ResponseEntity(new Response(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
