@@ -560,9 +560,22 @@ public class SearchServiceImpl implements SearchService {
 
             getTicketDepartmentQuery(ticketDepartmentID, finalQuery);
         }
+        // add rating filter
+        addRatingFilter(searchRequest.getRating(), finalQuery);
 
         getEscalatedTicketsQuery(searchRequest.getIsEscalated(), finalQuery);
         return finalQuery;
+    }
+
+    private void addRatingFilter(Long rating, BoolQueryBuilder finalQuery) {
+        if(rating == null || rating < 0 || rating > 5) {
+            log.error("Rating value should be between 0 to 5");
+            return;
+        }
+        MatchQueryBuilder ratingQuery = QueryBuilders.matchQuery("rating", rating);
+        BoolQueryBuilder ratingSearchQuery = QueryBuilders.boolQuery();
+        ratingSearchQuery.must(ratingQuery);
+        finalQuery.must(ratingQuery);
     }
 
     private BoolQueryBuilder createTicketEscalationQuery(Long lastUpdatedEpoch) {

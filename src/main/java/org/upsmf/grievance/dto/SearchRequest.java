@@ -41,4 +41,6 @@ public class SearchRequest {
 
     private Long ticketUserTypeId;
 
+    private Long rating;
+
 }
