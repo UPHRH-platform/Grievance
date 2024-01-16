@@ -30,6 +30,8 @@ public interface UserRepository extends PagingAndSortingRepository<User,Long> {
 
     Optional<User> findByUserDepartment(UserDepartment userDepartment);
 
+    Optional<List<User>> findAllByUserDepartment(UserDepartment userDepartment);
+
     List<User> findAllByUserDepartmentIn(List<UserDepartment> userDepartmentList);
 
     @Query(value = "select * from users u where status = 1", nativeQuery = true)
