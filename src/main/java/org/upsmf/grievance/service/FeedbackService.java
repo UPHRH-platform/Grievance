@@ -8,4 +8,6 @@ public interface FeedbackService {
     public void saveFeedback(FeedbackDto feedbackDto);
 
     public FeedbackResponse getFeedbacks();
+
+    public FeedbackResponse getFeedbackByTicketId(String ticketId);
 }

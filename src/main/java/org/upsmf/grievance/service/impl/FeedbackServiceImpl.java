@@ -15,6 +15,8 @@ import org.upsmf.grievance.repository.es.FeedbackRepository;
 import org.upsmf.grievance.repository.es.TicketRepository;
 import org.upsmf.grievance.service.FeedbackService;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -43,6 +45,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                     .email(feedbackDto.getEmail())
                     .phone(feedbackDto.getPhone())
                     .rating(feedbackDto.getRating())
+                    .ticketId(String.valueOf(feedbackDto.getTicketId()))
                     .comment(feedbackDto.getComment()!=null?feedbackDto.getComment():"").build();
 
             log.info("Saving feedback: {}", feedback);
@@ -53,6 +56,8 @@ public class FeedbackServiceImpl implements FeedbackService {
                 if (esTicket.isPresent()) {
                     Ticket ticket = esTicket.get();
                     ticket.setRating(Long.valueOf(feedbackDto.getRating()));
+                    String comment = feedbackDto.getComment()!=null?feedbackDto.getComment():"";
+                    ticket.setFeedbackComment(comment);
                     esTicketRepository.save(ticket);
                 }
             } else {
@@ -117,4 +122,21 @@ public class FeedbackServiceImpl implements FeedbackService {
 //        return Pattern.matches(namePattern, name);
     }
 
+    /**
+     * Method to get feedbacks for provided Ticket ID
+     * @param ticketId
+     * @return
+     */
+    @Override
+    public FeedbackResponse getFeedbackByTicketId(String ticketId) {
+        FeedbackResponse feedbackResponse = null;
+        List<Feedback> allByTicketId = feedbackRepository.findAllByTicketId(ticketId);
+        if(allByTicketId != null && !allByTicketId.isEmpty()) {
+            feedbackResponse = FeedbackResponse.builder()
+                    .data(allByTicketId).count(allByTicketId.size()).build();
+            return feedbackResponse;
+        }
+        feedbackResponse = FeedbackResponse.builder().count(0).data(Collections.emptyList()).build();
+        return feedbackResponse;
+    }
 }

@@ -188,6 +188,7 @@ public class IntegrationServiceImpl implements IntegrationService {
             JsonNode payloadRoot = mapper.createObjectNode();
             ((ObjectNode) payloadRoot).put("request", payload);
             ResponseEntity<String> getUsersResponse = searchUsers(payloadRoot);
+            log.info("create user search user response - {}", getUsersResponse);
             if (getUsersResponse.getStatusCode() == HttpStatus.OK) {
                 String getUsersResponseBody = getUsersResponse.getBody();
                 JsonNode getUsersJsonNode = mapper.readTree(getUsersResponseBody);
