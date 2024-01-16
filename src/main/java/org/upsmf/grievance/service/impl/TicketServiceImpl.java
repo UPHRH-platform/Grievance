@@ -137,13 +137,13 @@ public class TicketServiceImpl implements TicketService {
                 }
                 log.info("attachment name - {}", name);
                 // remove encoded string from name
-                removeEncodedCharecters(name);
+                name = removeEncodedCharacters(name);
             }
         }
         return name;
     }
 
-    private static void removeEncodedCharecters(String name) {
+    private static String removeEncodedCharacters(String name) {
         name = name.replace("%20", " ");
         name = name.replace("%28", "(");
         name = name.replace("%29", ")");
@@ -152,7 +152,12 @@ public class TicketServiceImpl implements TicketService {
         name = name.replace("%22", "_");
         name = name.replace("%2A", "_");
         name = name.replace("%2B", "_");
+        name = name.replace("%3A", "_");
+        name = name.replace("%E2%80", "_");
+        name = name.replace("%AF", "_");
+
         log.info("attachment name after removing encoded characters - {}", name);
+        return name;
     }
 
     /**
