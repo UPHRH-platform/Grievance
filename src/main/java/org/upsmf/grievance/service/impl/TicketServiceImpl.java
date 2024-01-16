@@ -152,6 +152,7 @@ public class TicketServiceImpl implements TicketService {
         name = name.replace("%22", "_");
         name = name.replace("%2A", "_");
         name = name.replace("%2B", "_");
+        log.info("attachment name after removing encoded characters - {}", name);
     }
 
     /**
