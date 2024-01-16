@@ -8,11 +8,14 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.upsmf.grievance.dto.FeedbackDto;
+import org.upsmf.grievance.model.es.Feedback;
 import org.upsmf.grievance.model.reponse.FeedbackResponse;
 import org.upsmf.grievance.model.reponse.Response;
+import org.upsmf.grievance.service.DashboardService;
 import org.upsmf.grievance.service.FeedbackService;
 
 import javax.validation.Valid;
+import java.util.List;
 
 @Controller
 @RequestMapping("/api/feedback")
@@ -22,6 +25,9 @@ public class FeedbackController {
 
     @Autowired
     private FeedbackService feedbackService;
+
+    @Autowired
+    private DashboardService dashboardService;
 
     @PostMapping("/save")
     public ResponseEntity saveFeedback(@Valid  @RequestBody FeedbackDto feedbackDto) {
@@ -37,7 +43,7 @@ public class FeedbackController {
     public ResponseEntity saveFeedback(@Valid @RequestParam(name = "id") String id) {
         try {
             log.info(" get feedback by ID payload - {} ", id);
-            FeedbackResponse feedbackByTicketId = feedbackService.getFeedbackByTicketId(id);
+            List<Feedback> feedbackByTicketId = dashboardService.getFeedbackByTicketId(id);
             log.info(" get feedback by ID response - {} ", feedbackByTicketId);
             return new ResponseEntity(new Response(HttpStatus.OK.value(), feedbackByTicketId), HttpStatus.OK);
         }catch (Exception e){

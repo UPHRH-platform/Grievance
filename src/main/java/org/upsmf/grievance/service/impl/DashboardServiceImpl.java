@@ -18,6 +18,7 @@ import org.upsmf.grievance.dto.SearchDateRange;
 import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.enums.TicketPriority;
 import org.upsmf.grievance.enums.TicketStatus;
+import org.upsmf.grievance.model.es.Feedback;
 import org.upsmf.grievance.model.es.Ticket;
 import org.upsmf.grievance.service.DashboardService;
 
@@ -553,5 +554,77 @@ public class DashboardServiceImpl implements DashboardService {
         // adding date range
         esQuery.must(QueryBuilders.rangeQuery("created_date_ts").gte(date.getFrom()).lt(date.getTo()));
         return esQuery;
+    }
+
+    public List<Feedback> getFeedbackByTicketId(String ticketId) {
+        BoolQueryBuilder esQuery = createESQueryForFeedbackByTicketId(ticketId);
+        return executeQueryForFeedback(esQuery);
+    }
+
+    private static BoolQueryBuilder createESQueryForFeedbackByTicketId(String ticketId) {
+        BoolQueryBuilder esQuery = QueryBuilders.boolQuery();
+        // looping to add filter params in the main query
+        esQuery.must(QueryBuilders.matchQuery("ticket_id", ticketId));
+        return esQuery;
+    }
+
+    private List<Feedback> executeQueryForFeedback(BoolQueryBuilder esQuery) {
+        try {
+            SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
+                    .query(esQuery).size(10000);
+            org.elasticsearch.action.search.SearchRequest searchRequest = new org.elasticsearch.action.search.SearchRequest("feedback");
+            searchRequest.searchType(SearchType.QUERY_THEN_FETCH);
+            searchRequest.source(searchSourceBuilder);
+            SearchResponse searchResponse = esConfig.elasticsearchClient().search(searchRequest, RequestOptions.DEFAULT);
+            return getFeedbackDocumentsFromHits(searchResponse.getHits());
+        } catch (IOException e) {
+            log.error("Error while searching ticket by ticket id list", e);
+        }
+        return null;
+    }
+
+    private List<Feedback> getFeedbackDocumentsFromHits(SearchHits hits) {
+        List<Feedback> documents = new ArrayList<>();
+        for (SearchHit hit : hits) {
+            Feedback feedback = new Feedback();
+            for (Map.Entry entry : hit.getSourceAsMap().entrySet()) {
+                String key = (String) entry.getKey();
+                mapEsTicketDtoToFeedbackDto(entry, key, feedback);
+            }
+            if(hit.getId() != null && !hit.getId().isBlank()) {
+                feedback.setId(hit.getId());
+            }
+            documents.add(feedback);
+        }
+        return documents;
+    }
+
+    private void mapEsTicketDtoToFeedbackDto(Map.Entry entry, String key, Feedback feedback) {
+        switch (key) {
+            case "ticket_id":
+                feedback.setTicketId((String) entry.getValue());
+                break;
+            case "first_name":
+                feedback.setFirstName((String) entry.getValue());
+                break;
+            case "last_name":
+                feedback.setLastName((String) entry.getValue());
+                break;
+            case "phone":
+                feedback.setPhone((String) entry.getValue());
+                break;
+            case "email":
+                feedback.setEmail((String) entry.getValue());
+                break;
+            case "rating":
+                Integer intValue = ((Number) entry.getValue()).intValue();
+                feedback.setRating(intValue);
+                break;
+            case "comment":
+                feedback.setComment((String) entry.getValue());
+                break;
+            default:
+                break;
+        }
     }
 }
