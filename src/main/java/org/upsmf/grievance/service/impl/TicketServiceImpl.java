@@ -144,14 +144,14 @@ public class TicketServiceImpl implements TicketService {
     }
 
     private static void removeEncodedCharecters(String name) {
-        name.replace("%20", " ");
-        name.replace("%28", "(");
-        name.replace("%29", ")");
-        name.replace("%2D", "-");
-        name.replace("%5F", "_");
-        name.replace("%22", "_");
-        name.replace("%2A", "_");
-        name.replace("%2B", "_");
+        name = name.replace("%20", " ");
+        name = name.replace("%28", "(");
+        name = name.replace("%29", ")");
+        name = name.replace("%2D", "-");
+        name = name.replace("%5F", "_");
+        name = name.replace("%22", "_");
+        name = name.replace("%2A", "_");
+        name = name.replace("%2B", "_");
     }
 
     /**
