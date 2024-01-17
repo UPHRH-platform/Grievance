@@ -1073,13 +1073,13 @@ public class IntegrationServiceImpl implements IntegrationService {
         ObjectMapper mapper = new ObjectMapper();
         Map<String, String> filter = mapper.convertValue(payload.get("filter"), new TypeReference<Map<String, String>>(){});
         List<User> userList = filterUserData(filter, email);
+        JsonNode userResponse = mapper.createObjectNode();
         if (userList != null) {
             for (User user : userList) {
                 childNodes.add(createUserResponse(user));
             }
+            ((ObjectNode) userResponse).put("count", userList.size());
         }
-        JsonNode userResponse = mapper.createObjectNode();
-        ((ObjectNode) userResponse).put("count", users.getTotalElements());
         ArrayNode nodes = mapper.valueToTree(childNodes);
         ((ObjectNode) userResponse).put("result", nodes);
         return ResponseEntity.ok(mapper.writeValueAsString(userResponse));
