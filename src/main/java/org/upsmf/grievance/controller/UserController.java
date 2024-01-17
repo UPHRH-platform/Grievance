@@ -195,4 +195,14 @@ public class UserController {
         }
     }
 
+    @PostMapping("/filter")
+    public ResponseEntity<String> filterUsers(@RequestBody JsonNode payload) {
+        try {
+            return integrationService.filterUsers(payload);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e.getLocalizedMessage());
+        }
+    }
+
 }
