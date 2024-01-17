@@ -105,7 +105,7 @@ public class TicketCouncilServiceImpl implements TicketCouncilService {
         if(userDepartments != null && !userDepartments.isEmpty()) {
             ticketCouncilList.stream().forEach(ticketCouncil -> {
                 userDepartments.stream().forEach(x -> {ticketCouncil.getTicketDepartments().stream().forEach(dept -> {
-                                if (dept.getId() == x.getDepartmentId()) {
+                                if (dept.getTicketDepartmentName().equals(x.getDepartmentName()) && ticketCouncil.getId().longValue() == x.getCouncilId().longValue()) {
                                     dept.setUserCount(dept.getUserCount() + 1);
                                 }
                             });
