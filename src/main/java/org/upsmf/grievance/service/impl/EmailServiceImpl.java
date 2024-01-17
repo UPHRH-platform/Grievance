@@ -69,7 +69,7 @@ public class EmailServiceImpl implements EmailService {
         Runnable mailThread = () -> {   // lambda expression
             sendMailToRaiser(details, ticket);
             sendMailToAdmin(details, ticket);
-            sendMailToNodalOfficer(details, ticket);
+            //sendMailToNodalOfficer(details, ticket);
         };
         new Thread(mailThread).start();
     }
@@ -958,6 +958,7 @@ public class EmailServiceImpl implements EmailService {
                     }
                     velocityContext.put("username", user.getUsername());
                     velocityContext.put("password", password);
+                    velocityContext.put("url", siteUrl);
                     // signature
                     createCommonMailSignature(velocityContext);
                     // merge mail body

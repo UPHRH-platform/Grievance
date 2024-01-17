@@ -93,7 +93,7 @@
                                                                                             <div>Password: <strong>${password}</strong></div>
                                                                                         </p>
 
-                                                                                        <p>Please use these credentials to log in to the application. If you have any questions, encounter issues during the login process, or need assistance with anything related to our platform, feel free to contact our support team.</p>
+                                                                                        <p>Please use these credentials to log in to the ${url}. If you have any questions, encounter issues during the login process, or need assistance with anything related to our platform, feel free to contact our support team.</p>
                                                                                     </td>
                                                                                 </tr>
                                                                                 <tr></tr>

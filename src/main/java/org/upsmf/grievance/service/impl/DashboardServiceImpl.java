@@ -1,5 +1,6 @@
 package org.upsmf.grievance.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import org.upsmf.grievance.dto.SearchDateRange;
 import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.enums.TicketPriority;
 import org.upsmf.grievance.enums.TicketStatus;
+import org.upsmf.grievance.model.TicketStatistics;
 import org.upsmf.grievance.model.es.Feedback;
 import org.upsmf.grievance.model.es.Ticket;
 import org.upsmf.grievance.service.DashboardService;
@@ -296,7 +298,6 @@ public class DashboardServiceImpl implements DashboardService {
         keyPerformanceMatrixNodeData.put("Total", totalTicketCount);
         keyPerformanceMatrixNodeData.put("Escalation Percentage", totalTicketCount > 0 ? BigDecimal.valueOf(totalEscalatedTicketCount).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(totalTicketCount), 2, RoundingMode.HALF_UP).toString().concat("%"):"0%");
         keyPerformanceMatrixNodeData.put("Nudge Ticket Percentage", totalTicketCount > 0 ? BigDecimal.valueOf(totalNudgedTicketCount).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(totalTicketCount), 2, RoundingMode.HALF_UP).toString().concat("%"):"0%");
-        keyPerformanceMatrixNodeData.put("Open Ticket Gte21", totalOpenTicketCountGte21);
         keyPerformanceMatrixNodeData.put("Turn Around Time", ticketsTurnAroundTimeInDays);
         return keyPerformanceMatrixNodeData;
     }
@@ -502,10 +503,10 @@ public class DashboardServiceImpl implements DashboardService {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode ticketAssignmentMatrixNodeData = objectMapper.createObjectNode();
         ticketAssignmentMatrixNodeData.put("Total", totalTicketCount);
-        ticketAssignmentMatrixNodeData.put("Is Open", totalOpenTicketCount);
-        ticketAssignmentMatrixNodeData.put("Is Closed", totalClosedTicketCount);
-        ticketAssignmentMatrixNodeData.put("Is Junk", totalJunkedTicketCount);
-        ticketAssignmentMatrixNodeData.put("Is Escalated", totalEscalatedTicketCount);
+        ticketAssignmentMatrixNodeData.put("Pending", totalOpenTicketCount);
+        ticketAssignmentMatrixNodeData.put("Closed", totalClosedTicketCount);
+        ticketAssignmentMatrixNodeData.put("Junk", totalJunkedTicketCount);
+        ticketAssignmentMatrixNodeData.put("Escalated", totalEscalatedTicketCount);
         ticketAssignmentMatrixNodeData.put("Unassigned", totalOpenUnassignedTicketCount);
         return ticketAssignmentMatrixNodeData;
     }
@@ -552,7 +553,7 @@ public class DashboardServiceImpl implements DashboardService {
             }
         });
         // adding date range
-        esQuery.must(QueryBuilders.rangeQuery("created_date_ts").gte(date.getFrom()).lt(date.getTo()));
+        esQuery.must(QueryBuilders.rangeQuery("created_date_ts").gte(date.getFrom()).lte(date.getTo()));
         return esQuery;
     }
 
@@ -626,5 +627,76 @@ public class DashboardServiceImpl implements DashboardService {
             default:
                 break;
         }
+    }
+
+    /**
+     * Method to give ticket statistical data for logged in user
+     * @param userData
+     * @return
+     */
+    @Override
+    public TicketStatistics getTicketStatisticsByUser(JsonNode userData) {
+        Long userId = null;
+        log.info("Json node data - {}", userData);
+        if(userData != null && userData.has("userId")) {
+            userId = userData.get("userId").asLong();
+        }
+        log.info("assigned userID - {}", userId);
+        // validate payload
+        Long escalatedToMeCount = null;
+        Long nudgedTicketCount = null;
+        Long notAssignedTicketCount = null;
+        Long priorityTicketCount = null;
+        if(userId == null || userId <= 0) {
+            log.info("creating response for Administrative role");
+            // create Filter Payload for Escalated to me
+            escalatedToMeCount = createAndExecuteFilterPayload(null, "OPEN", false, "MEDIUM");
+            // create filter payload for Nudged
+            nudgedTicketCount = createAndExecuteFilterPayload(null, "OPEN", false, "HIGH");
+            // create filter payload for Not Assigned
+            notAssignedTicketCount = createAndExecuteFilterPayload(-1l, "OPEN", false, "LOW");
+        }
+        if(userId > 0) {
+            // create filter for priority tab
+            priorityTicketCount = createAndExecuteFilterPayload(userId, "OPEN", false, "HIGH");
+        }
+        // create filter payload for pending
+        Long pendingTicketCount = createAndExecuteFilterPayload(userId, "OPEN", false, "LOW");
+        // create filter payload for resolved
+        Long resolvedTicketCount = createAndExecuteFilterPayload(userId, "CLOSED", false, null);
+        // create filter payload for junk
+        Long junkTicketCount = createAndExecuteFilterPayload(userId, "INVALID", true, null);
+        // create response
+        TicketStatistics ticketStatistics = TicketStatistics.builder().nudgedTicketCount(nudgedTicketCount)
+                .pendingTicketCount(pendingTicketCount)
+                .notAssignedTicketCount(notAssignedTicketCount)
+                .resolvedTicketCount(resolvedTicketCount)
+                .escalatedToMeCount(escalatedToMeCount)
+                .junkTicketCount(junkTicketCount)
+                .priorityTicketCount(priorityTicketCount)
+                .build();
+        log.info("statistic data - {}", ticketStatistics);
+        return ticketStatistics;
+    }
+
+    private Long createAndExecuteFilterPayload(Long userId, String status, boolean isJunk, String ticketPriority) {
+        BoolQueryBuilder esQueryForTicketCount = createESQueryForTicketCount(userId, status, isJunk, ticketPriority);
+        return executeQueryForCount(esQueryForTicketCount);
+    }
+
+    private BoolQueryBuilder createESQueryForTicketCount(Long userId, String status, boolean isJunk, String ticketPriority) {
+        BoolQueryBuilder esQuery = QueryBuilders.boolQuery();
+        // looping to add filter params in the main query
+        if(userId != null) {
+            if(userId == 0) {
+                userId = -1l;
+            }
+            esQuery.must(QueryBuilders.matchQuery("assigned_to_id", userId));
+        }
+        esQuery.must(QueryBuilders.matchQuery("status", status));
+        esQuery.must(QueryBuilders.matchQuery("priority", ticketPriority));
+        esQuery.must(QueryBuilders.matchQuery("is_junk", isJunk));
+        log.info("ticket escalated - ES query - {}", esQuery);
+        return esQuery;
     }
 }
