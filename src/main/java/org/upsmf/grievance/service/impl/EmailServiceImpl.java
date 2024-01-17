@@ -958,6 +958,7 @@ public class EmailServiceImpl implements EmailService {
                     }
                     velocityContext.put("username", user.getUsername());
                     velocityContext.put("password", password);
+                    velocityContext.put("url", siteUrl);
                     // signature
                     createCommonMailSignature(velocityContext);
                     // merge mail body
