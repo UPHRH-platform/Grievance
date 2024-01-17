@@ -501,10 +501,26 @@ public class TicketServiceImpl implements TicketService {
                         && !ticket.getOwnerEmail().isBlank()) {
                     sendReopenTicketMailToNodal(ticket, curentUpdatedTicket);
                 }
+                sendReopenTicketMailToRaiser(ticket, curentUpdatedTicket);
+                return ticket;
             }
             sendUpdateTicketMail(ticket, curentUpdatedTicket);
             return ticket;
         }
+    }
+
+    private void sendReopenTicketMailToRaiser(Ticket ticket, org.upsmf.grievance.model.es.Ticket curentUpdatedTicket) {
+        Ticket finalTicket = ticket;
+        org.upsmf.grievance.model.es.Ticket finalCurentUpdatedTicket = curentUpdatedTicket;
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Re-opening of Your Grievance Ticket - " + finalCurentUpdatedTicket.getTicketId()).recipient(finalCurentUpdatedTicket.getEmail()).build();
+                emailService.sendUpdateTicketMail(resolutionOfYourGrievance, finalTicket);
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
     }
 
     private void sendReopenTicketMailToNodal(Ticket ticket, org.upsmf.grievance.model.es.Ticket curentUpdatedTicket) {
