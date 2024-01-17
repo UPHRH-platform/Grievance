@@ -688,7 +688,12 @@ public class DashboardServiceImpl implements DashboardService {
     private BoolQueryBuilder createESQueryForTicketCount(Long userId, String status, boolean isJunk, String ticketPriority) {
         BoolQueryBuilder esQuery = QueryBuilders.boolQuery();
         // looping to add filter params in the main query
-        esQuery.must(QueryBuilders.matchQuery("assigned_to_id", userId));
+        if(userId != null) {
+            if(userId == 0) {
+                userId = -1l;
+            }
+            esQuery.must(QueryBuilders.matchQuery("assigned_to_id", userId));
+        }
         esQuery.must(QueryBuilders.matchQuery("status", status));
         esQuery.must(QueryBuilders.matchQuery("priority", ticketPriority));
         esQuery.must(QueryBuilders.matchQuery("is_junk", isJunk));
