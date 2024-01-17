@@ -79,7 +79,7 @@ public class TicketController {
     }
 
     @PostMapping("/statistic")
-    public ResponseEntity upload(@RequestBody Long userId) {
+    public ResponseEntity upload(@RequestParam("userId") Long userId) {
         try {
             TicketStatistics ticketStatisticsByUser = dashboardService.getTicketStatisticsByUser(userId);
             Response response = new Response(HttpStatus.OK.value(), ticketStatisticsByUser);
