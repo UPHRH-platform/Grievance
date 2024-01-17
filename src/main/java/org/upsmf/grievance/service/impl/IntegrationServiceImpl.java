@@ -335,7 +335,7 @@ public class IntegrationServiceImpl implements IntegrationService {
         }
 
         if (StringUtils.isEmpty(attributeMap.get("phoneNumber"))  ) {
-            throw new UserException("Phone numeber is missing", ErrorCode.USER_002);
+            throw new UserException("Phone number is missing", ErrorCode.USER_002);
         }
 
         if (StringUtils.isEmpty(attributeMap.get("Role"))  ) {
@@ -376,11 +376,11 @@ public class IntegrationServiceImpl implements IntegrationService {
 
             if (userOptional.isPresent()) {
                 if (("SUPERADMIN".equalsIgnoreCase(role))) {
-                    throw new UserException("Secratary already exist", ErrorCode.USER_002);
+                    throw new UserException("Application is designed to have one Secretary.", ErrorCode.USER_002);
                 }
 
                 if (("ADMIN".equalsIgnoreCase(role))) {
-                    throw new UserException("Admin already exist", ErrorCode.USER_002);
+                    throw new UserException("Application is designed to have one Admin.", ErrorCode.USER_002);
                 }
             }
         }
