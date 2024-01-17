@@ -30,7 +30,7 @@ public class TicketDepartment {
     @Column(name = "status")
     private Boolean status;
 
-//    @OneToMany //(targetEntity = UserDepartment.class, mappedBy = "ticket_department_id", fetch = FetchType.EAGER)
-//    @Fetch(value = FetchMode.SUBSELECT)
-//    private List<User> user;
+    @Transient
+    private Integer userCount = 0;
+
 }
