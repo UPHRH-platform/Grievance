@@ -69,7 +69,7 @@ public class EmailServiceImpl implements EmailService {
         Runnable mailThread = () -> {   // lambda expression
             sendMailToRaiser(details, ticket);
             sendMailToAdmin(details, ticket);
-            sendMailToNodalOfficer(details, ticket);
+            //sendMailToNodalOfficer(details, ticket);
         };
         new Thread(mailThread).start();
     }
