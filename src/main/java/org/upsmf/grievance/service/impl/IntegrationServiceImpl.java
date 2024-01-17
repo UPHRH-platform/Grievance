@@ -1,6 +1,8 @@
 package org.upsmf.grievance.service.impl;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -22,6 +24,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponents;
@@ -33,16 +36,18 @@ import org.upsmf.grievance.dto.UserResponseDto;
 import org.upsmf.grievance.enums.Department;
 import org.upsmf.grievance.exception.*;
 import org.upsmf.grievance.exception.runtime.InvalidRequestException;
-import org.upsmf.grievance.model.*;
-import org.upsmf.grievance.repository.UserDepartmentRepository;
+import org.upsmf.grievance.model.Role;
+import org.upsmf.grievance.model.User;
+import org.upsmf.grievance.model.UserDepartment;
+import org.upsmf.grievance.model.UserRole;
 import org.upsmf.grievance.repository.RoleRepository;
+import org.upsmf.grievance.repository.UserDepartmentRepository;
 import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.repository.UserRoleRepository;
 import org.upsmf.grievance.service.*;
 import org.upsmf.grievance.util.DateUtil;
 import org.upsmf.grievance.util.ErrorCode;
 
-import javax.transaction.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -330,7 +335,7 @@ public class IntegrationServiceImpl implements IntegrationService {
         }
 
         if (StringUtils.isEmpty(attributeMap.get("phoneNumber"))  ) {
-            throw new UserException("Phone numeber is missing", ErrorCode.USER_002);
+            throw new UserException("Phone number is missing", ErrorCode.USER_002);
         }
 
         if (StringUtils.isEmpty(attributeMap.get("Role"))  ) {
@@ -339,12 +344,13 @@ public class IntegrationServiceImpl implements IntegrationService {
 
         String role = userDto.getAttributes().get(ROLE);
 
-        if (role != null && !role.isBlank() && ("SUPERADMIN".equalsIgnoreCase(role) || "ADMIN".equalsIgnoreCase(role))) {
+        if (role != null && !role.isBlank() && ("SUPERADMIN".equalsIgnoreCase(role)
+                || "ADMIN".equalsIgnoreCase(role) || "GRIEVANCEADMIN".equalsIgnoreCase(role))) {
             Role roleDetails = roleRepository.findByName(role);
 
             if(roleDetails == null) {
-                log.warn("SUPERADMIN/ADMIN role is not available");
-                throw new UserException("SUPERADMIN/ADMIN Role is missing", ErrorCode.USER_002);
+                log.warn("Secretary/Admin/Grievance Nodal role is not available");
+                throw new UserException("Secretary/Admin/Grievance Nodal Role is missing", ErrorCode.USER_002);
             }
 
             List<UserRole> userRoleList = userRoleRepository.findByRoleId(roleDetails.getId());
@@ -371,11 +377,15 @@ public class IntegrationServiceImpl implements IntegrationService {
 
             if (userOptional.isPresent()) {
                 if (("SUPERADMIN".equalsIgnoreCase(role))) {
-                    throw new UserException("Secratary already exist", ErrorCode.USER_002);
+                    throw new UserException("Application is designed to have one Secretary.", ErrorCode.USER_002);
                 }
 
                 if (("ADMIN".equalsIgnoreCase(role))) {
-                    throw new UserException("Admin already exist", ErrorCode.USER_002);
+                    throw new UserException("Application is designed to have one Admin.", ErrorCode.USER_002);
+                }
+
+                if (("GRIEVANCEADMIN".equalsIgnoreCase(role))) {
+                    throw new UserException("Application is designed to have one Grievance Nodal.", ErrorCode.USER_002);
                 }
             }
         }
@@ -1024,5 +1034,93 @@ public class IntegrationServiceImpl implements IntegrationService {
             return ResponseEntity.ok(Boolean.TRUE);
         }
         return ResponseEntity.ok(Boolean.FALSE);
+    }
+
+    @Override
+    public ResponseEntity<String> filterUsers(JsonNode payload) throws Exception {
+
+        List<UserResponseDto> childNodes = new ArrayList<>();
+        Pageable pageable = PageRequest.of(payload.get("page").asInt(), payload.get("size").asInt(), Sort.by(Sort.Direction.DESC, "id"));
+        Page<User> users = Page.empty();
+
+        if (payload.get("filter") != null && payload.get("filter").size() > 0) {
+            // filter users
+            return getFilteredResponseEntity(payload, childNodes, users);
+        } else if (payload.get("searchKeyword") != null && !payload.get("searchKeyword").asText().isBlank()) {
+            String email = payload.get("searchKeyword").asText();
+            users = userRepository.findByEmailWithPagination(email, pageable);
+        }  else {
+            users = userRepository.findAll(pageable);
+        }
+
+        if (users.hasContent()) {
+            for (User user : users.getContent()) {
+                childNodes.add(createUserResponse(user));
+            }
+        }
+        JsonNode userResponse = mapper.createObjectNode();
+        ((ObjectNode) userResponse).put("count", users.getTotalElements());
+        ArrayNode nodes = mapper.valueToTree(childNodes);
+        ((ObjectNode) userResponse).put("result", nodes);
+        return ResponseEntity.ok(mapper.writeValueAsString(userResponse));
+    }
+
+    private ResponseEntity<String> getFilteredResponseEntity(JsonNode payload, List<UserResponseDto> childNodes, Page<User> users) throws JsonProcessingException {
+        String email = null;
+        if(payload.get("searchKeyword") != null && !payload.get("searchKeyword").asText().isBlank()) {
+            email = payload.get("searchKeyword").asText();
+        }
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, String> filter = mapper.convertValue(payload.get("filter"), new TypeReference<Map<String, String>>(){});
+        List<User> userList = filterUserData(filter, email);
+        JsonNode userResponse = mapper.createObjectNode();
+        if (userList != null) {
+            for (User user : userList) {
+                childNodes.add(createUserResponse(user));
+            }
+            ((ObjectNode) userResponse).put("count", userList.size());
+        }
+        ArrayNode nodes = mapper.valueToTree(childNodes);
+        ((ObjectNode) userResponse).put("result", nodes);
+        return ResponseEntity.ok(mapper.writeValueAsString(userResponse));
+    }
+
+    @Transactional(readOnly = true)
+    private List<User> filterUserData(Map<String, String> map, String searchString) {
+        List<User> users = null;
+        String roleValue = null;
+        String councilId = null;
+        String departmentId = null;
+        if(map.containsKey("role")) {
+            roleValue = map.get("role");
+        }
+        if(map.containsKey("councilId")) {
+            councilId = map.get("councilId");
+        }
+        if(map.containsKey("departmentId")) {
+            departmentId = map.get("departmentId");
+        }
+        if(searchString != null && !searchString.isBlank()) {
+            users = userRepository.findAllByKeyword(searchString);
+        } else {
+            users = userRepository.findAll();
+        }
+        // filter all users by role
+        if(users!= null && !users.isEmpty() && roleValue != null && !roleValue.isBlank()) {
+            String finalRoleValue = roleValue;
+            users = users.stream().filter(x -> Arrays.stream(x.getRoles())
+                    .anyMatch(role -> role.equalsIgnoreCase(finalRoleValue))).collect(Collectors.toList());
+        }
+        // filter on council
+        if(users!= null && !users.isEmpty() && councilId != null && !councilId.isBlank()) {
+            Long finalCouncilId = Long.parseLong(councilId);
+            users = users.stream().filter(x -> x.getUserDepartment() != null && x.getUserDepartment().getCouncilId().longValue() == finalCouncilId.longValue()).collect(Collectors.toList());
+        }
+        // filter on department
+        if(users!= null && !users.isEmpty() && departmentId != null && !departmentId.isBlank()) {
+            Long finalDepartmentId = Long.parseLong(departmentId);
+            users = users.stream().filter(x -> x.getUserDepartment() != null && x.getUserDepartment().getDepartmentId().longValue() == finalDepartmentId.longValue()).collect(Collectors.toList());
+        }
+        return users;
     }
 }

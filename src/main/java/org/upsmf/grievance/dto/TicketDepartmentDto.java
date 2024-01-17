@@ -25,4 +25,6 @@ public class TicketDepartmentDto {
     private String ticketCouncilName;
 
     private Boolean status;
+
+    private Integer userCount;
 }

@@ -41,4 +41,6 @@ public interface IntegrationService {
     List<User> getAllUsersByRole(String role);
 
     ResponseEntity<Boolean> getUserStatusByEmail(String userName);
+
+    ResponseEntity<String> filterUsers(JsonNode payload) throws Exception;
 }
