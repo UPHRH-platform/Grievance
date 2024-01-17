@@ -298,7 +298,6 @@ public class DashboardServiceImpl implements DashboardService {
         keyPerformanceMatrixNodeData.put("Total", totalTicketCount);
         keyPerformanceMatrixNodeData.put("Escalation Percentage", totalTicketCount > 0 ? BigDecimal.valueOf(totalEscalatedTicketCount).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(totalTicketCount), 2, RoundingMode.HALF_UP).toString().concat("%"):"0%");
         keyPerformanceMatrixNodeData.put("Nudge Ticket Percentage", totalTicketCount > 0 ? BigDecimal.valueOf(totalNudgedTicketCount).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(totalTicketCount), 2, RoundingMode.HALF_UP).toString().concat("%"):"0%");
-        keyPerformanceMatrixNodeData.put("Open Ticket Gte21", totalOpenTicketCountGte21);
         keyPerformanceMatrixNodeData.put("Turn Around Time", ticketsTurnAroundTimeInDays);
         return keyPerformanceMatrixNodeData;
     }
@@ -504,10 +503,10 @@ public class DashboardServiceImpl implements DashboardService {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode ticketAssignmentMatrixNodeData = objectMapper.createObjectNode();
         ticketAssignmentMatrixNodeData.put("Total", totalTicketCount);
-        ticketAssignmentMatrixNodeData.put("Is Open", totalOpenTicketCount);
-        ticketAssignmentMatrixNodeData.put("Is Closed", totalClosedTicketCount);
-        ticketAssignmentMatrixNodeData.put("Is Junk", totalJunkedTicketCount);
-        ticketAssignmentMatrixNodeData.put("Is Escalated", totalEscalatedTicketCount);
+        ticketAssignmentMatrixNodeData.put("Pending", totalOpenTicketCount);
+        ticketAssignmentMatrixNodeData.put("Closed", totalClosedTicketCount);
+        ticketAssignmentMatrixNodeData.put("Junk", totalJunkedTicketCount);
+        ticketAssignmentMatrixNodeData.put("Escalated", totalEscalatedTicketCount);
         ticketAssignmentMatrixNodeData.put("Unassigned", totalOpenUnassignedTicketCount);
         return ticketAssignmentMatrixNodeData;
     }
@@ -554,7 +553,7 @@ public class DashboardServiceImpl implements DashboardService {
             }
         });
         // adding date range
-        esQuery.must(QueryBuilders.rangeQuery("created_date_ts").gte(date.getFrom()).lt(date.getTo()));
+        esQuery.must(QueryBuilders.rangeQuery("created_date_ts").gte(date.getFrom()).lte(date.getTo()));
         return esQuery;
     }
 
@@ -697,6 +696,7 @@ public class DashboardServiceImpl implements DashboardService {
         esQuery.must(QueryBuilders.matchQuery("status", status));
         esQuery.must(QueryBuilders.matchQuery("priority", ticketPriority));
         esQuery.must(QueryBuilders.matchQuery("is_junk", isJunk));
+        log.info("ticket escalated - ES query - {}", esQuery);
         return esQuery;
     }
 }
