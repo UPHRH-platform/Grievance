@@ -1,5 +1,6 @@
 package org.upsmf.grievance.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
@@ -631,11 +632,17 @@ public class DashboardServiceImpl implements DashboardService {
 
     /**
      * Method to give ticket statistical data for logged in user
-     * @param userId
+     * @param userData
      * @return
      */
     @Override
-    public TicketStatistics getTicketStatisticsByUser(Long userId) {
+    public TicketStatistics getTicketStatisticsByUser(JsonNode userData) {
+        Long userId = null;
+        log.info("Json node data - {}", userData);
+        if(userData != null && userData.has("userId")) {
+            userId = userData.get("userId").asLong();
+        }
+        log.info("assigned userID - {}", userId);
         // validate payload
         Long escalatedToMeCount = null;
         Long nudgedTicketCount = null;
@@ -669,6 +676,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .junkTicketCount(junkTicketCount)
                 .priorityTicketCount(priorityTicketCount)
                 .build();
+        log.info("statistic data - {}", ticketStatistics);
         return ticketStatistics;
     }
 

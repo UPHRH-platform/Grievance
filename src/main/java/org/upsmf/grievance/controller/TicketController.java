@@ -1,5 +1,6 @@
 package org.upsmf.grievance.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -79,9 +80,9 @@ public class TicketController {
     }
 
     @PostMapping("/statistic")
-    public ResponseEntity upload(@RequestParam("userId") Long userId) {
+    public ResponseEntity upload(@RequestBody JsonNode userData) {
         try {
-            TicketStatistics ticketStatisticsByUser = dashboardService.getTicketStatisticsByUser(userId);
+            TicketStatistics ticketStatisticsByUser = dashboardService.getTicketStatisticsByUser(userData);
             Response response = new Response(HttpStatus.OK.value(), ticketStatisticsByUser);
             return new ResponseEntity<Response>(response, HttpStatus.OK);
         } catch (Exception e) {
