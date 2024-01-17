@@ -1114,12 +1114,12 @@ public class IntegrationServiceImpl implements IntegrationService {
         // filter on council
         if(users!= null && !users.isEmpty() && councilId != null && !councilId.isBlank()) {
             Long finalCouncilId = Long.parseLong(councilId);
-            users = users.stream().filter(x -> x.getUserDepartment() != null && x.getUserDepartment().getCouncilId() == finalCouncilId).collect(Collectors.toList());
+            users = users.stream().filter(x -> x.getUserDepartment() != null && x.getUserDepartment().getCouncilId().longValue() == finalCouncilId.longValue()).collect(Collectors.toList());
         }
         // filter on department
         if(users!= null && !users.isEmpty() && departmentId != null && !departmentId.isBlank()) {
             Long finalDepartmentId = Long.parseLong(departmentId);
-            users = users.stream().filter(x -> x.getUserDepartment() != null && x.getUserDepartment().getDepartmentId() == finalDepartmentId).collect(Collectors.toList());
+            users = users.stream().filter(x -> x.getUserDepartment() != null && x.getUserDepartment().getDepartmentId().longValue() == finalDepartmentId.longValue()).collect(Collectors.toList());
         }
         return users;
     }
