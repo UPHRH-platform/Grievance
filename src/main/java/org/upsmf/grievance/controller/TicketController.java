@@ -13,8 +13,10 @@ import org.upsmf.grievance.exception.CustomException;
 import org.upsmf.grievance.exception.TicketException;
 import org.upsmf.grievance.exception.UserException;
 import org.upsmf.grievance.model.Ticket;
+import org.upsmf.grievance.model.TicketStatistics;
 import org.upsmf.grievance.model.reponse.Response;
 import org.upsmf.grievance.service.AttachmentService;
+import org.upsmf.grievance.service.DashboardService;
 import org.upsmf.grievance.service.TicketService;
 import org.upsmf.grievance.util.ErrorCode;
 
@@ -28,6 +30,9 @@ public class TicketController {
 
     @Autowired
     private AttachmentService attachmentService;
+
+    @Autowired
+    private DashboardService dashboardService;
 
     @PostMapping("/save")
     public ResponseEntity<Response> save(@RequestBody TicketRequest ticketRequest) {
@@ -68,6 +73,17 @@ public class TicketController {
     public ResponseEntity upload(@RequestParam("file") MultipartFile file) {
         try {
             return attachmentService.uploadObject(file);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(e.getLocalizedMessage());
+        }
+    }
+
+    @PostMapping("/statistic")
+    public ResponseEntity upload(@RequestBody Long userId) {
+        try {
+            TicketStatistics ticketStatisticsByUser = dashboardService.getTicketStatisticsByUser(userId);
+            Response response = new Response(HttpStatus.OK.value(), ticketStatisticsByUser);
+            return new ResponseEntity<Response>(response, HttpStatus.OK);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(e.getLocalizedMessage());
         }

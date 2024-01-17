@@ -18,6 +18,7 @@ import org.upsmf.grievance.dto.SearchDateRange;
 import org.upsmf.grievance.dto.SearchRequest;
 import org.upsmf.grievance.enums.TicketPriority;
 import org.upsmf.grievance.enums.TicketStatus;
+import org.upsmf.grievance.model.TicketStatistics;
 import org.upsmf.grievance.model.es.Feedback;
 import org.upsmf.grievance.model.es.Ticket;
 import org.upsmf.grievance.service.DashboardService;
@@ -626,5 +627,63 @@ public class DashboardServiceImpl implements DashboardService {
             default:
                 break;
         }
+    }
+
+    /**
+     * Method to give ticket statistical data for logged in user
+     * @param userId
+     * @return
+     */
+    @Override
+    public TicketStatistics getTicketStatisticsByUser(Long userId) {
+        // validate payload
+        Long escalatedToMeCount = null;
+        Long nudgedTicketCount = null;
+        Long notAssignedTicketCount = null;
+        Long priorityTicketCount = null;
+        if(userId == null || userId <= 0) {
+            log.info("creating response for Administrative role");
+            // create Filter Payload for Escalated to me
+            escalatedToMeCount = createAndExecuteFilterPayload(null, "OPEN", false, "MEDIUM");
+            // create filter payload for Nudged
+            nudgedTicketCount = createAndExecuteFilterPayload(null, "OPEN", false, "HIGH");
+            // create filter payload for Not Assigned
+            notAssignedTicketCount = createAndExecuteFilterPayload(-1l, "OPEN", false, "LOW");
+        }
+        if(userId > 0) {
+            // create filter for priority tab
+            priorityTicketCount = createAndExecuteFilterPayload(userId, "OPEN", false, "HIGH");
+        }
+        // create filter payload for pending
+        Long pendingTicketCount = createAndExecuteFilterPayload(userId, "OPEN", false, "LOW");
+        // create filter payload for resolved
+        Long resolvedTicketCount = createAndExecuteFilterPayload(userId, "CLOSED", false, null);
+        // create filter payload for junk
+        Long junkTicketCount = createAndExecuteFilterPayload(userId, "INVALID", true, null);
+        // create response
+        TicketStatistics ticketStatistics = TicketStatistics.builder().nudgedTicketCount(nudgedTicketCount)
+                .pendingTicketCount(pendingTicketCount)
+                .notAssignedTicketCount(notAssignedTicketCount)
+                .resolvedTicketCount(resolvedTicketCount)
+                .escalatedToMeCount(escalatedToMeCount)
+                .junkTicketCount(junkTicketCount)
+                .priorityTicketCount(priorityTicketCount)
+                .build();
+        return ticketStatistics;
+    }
+
+    private Long createAndExecuteFilterPayload(Long userId, String status, boolean isJunk, String ticketPriority) {
+        BoolQueryBuilder esQueryForTicketCount = createESQueryForTicketCount(userId, status, isJunk, ticketPriority);
+        return executeQueryForCount(esQueryForTicketCount);
+    }
+
+    private BoolQueryBuilder createESQueryForTicketCount(Long userId, String status, boolean isJunk, String ticketPriority) {
+        BoolQueryBuilder esQuery = QueryBuilders.boolQuery();
+        // looping to add filter params in the main query
+        esQuery.must(QueryBuilders.matchQuery("assigned_to_id", userId));
+        esQuery.must(QueryBuilders.matchQuery("status", status));
+        esQuery.must(QueryBuilders.matchQuery("priority", ticketPriority));
+        esQuery.must(QueryBuilders.matchQuery("is_junk", isJunk));
+        return esQuery;
     }
 }
