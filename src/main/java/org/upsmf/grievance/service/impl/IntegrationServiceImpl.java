@@ -344,12 +344,13 @@ public class IntegrationServiceImpl implements IntegrationService {
 
         String role = userDto.getAttributes().get(ROLE);
 
-        if (role != null && !role.isBlank() && ("SUPERADMIN".equalsIgnoreCase(role) || "ADMIN".equalsIgnoreCase(role))) {
+        if (role != null && !role.isBlank() && ("SUPERADMIN".equalsIgnoreCase(role)
+                || "ADMIN".equalsIgnoreCase(role) || "GRIEVANCEADMIN".equalsIgnoreCase(role))) {
             Role roleDetails = roleRepository.findByName(role);
 
             if(roleDetails == null) {
-                log.warn("SUPERADMIN/ADMIN role is not available");
-                throw new UserException("SUPERADMIN/ADMIN Role is missing", ErrorCode.USER_002);
+                log.warn("Secretary/Admin/Grievance Nodal role is not available");
+                throw new UserException("Secretary/Admin/Grievance Nodal Role is missing", ErrorCode.USER_002);
             }
 
             List<UserRole> userRoleList = userRoleRepository.findByRoleId(roleDetails.getId());
@@ -381,6 +382,10 @@ public class IntegrationServiceImpl implements IntegrationService {
 
                 if (("ADMIN".equalsIgnoreCase(role))) {
                     throw new UserException("Application is designed to have one Admin.", ErrorCode.USER_002);
+                }
+
+                if (("GRIEVANCEADMIN".equalsIgnoreCase(role))) {
+                    throw new UserException("Application is designed to have one Grievance Nodal.", ErrorCode.USER_002);
                 }
             }
         }
