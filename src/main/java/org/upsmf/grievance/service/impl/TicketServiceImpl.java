@@ -566,15 +566,7 @@ public class TicketServiceImpl implements TicketService {
         thread.start();
     }
     private void sendMailForFeedbackLinkAndEmail(Ticket ticket) {
-        Ticket finalTicket = ticket;
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                generateFeedbackLinkAndEmail(finalTicket);
-            }
-        };
-        Thread thread = new Thread(runnable);
-        thread.start();
+        generateFeedbackLinkAndEmail(ticket);
     }
     private void sendMailForUnJunk(Ticket ticket, org.upsmf.grievance.model.es.Ticket curentUpdatedTicket) {
         Ticket finalTicket = ticket;
@@ -643,14 +635,17 @@ public class TicketServiceImpl implements TicketService {
 
     private void generateFeedbackLinkAndEmail(Ticket curentUpdatedTicket) {
         List<Comments> comments = commentRepository.findAllByTicketId(curentUpdatedTicket.getId());
+        log.error("Ticket for generateFeedbackLinkAndEmail - {}", curentUpdatedTicket);
         List<AssigneeTicketAttachment> assigneeTicketAttachments = assigneeTicketAttachmentRepository
                 .findByTicketId(curentUpdatedTicket.getId());
-
+        log.error("comments fetch for generateFeedbackLinkAndEmail - {}", comments);
         Comments latestComment =null;
         if(comments!=null && comments.size() > 0) {
             latestComment = comments.get(comments.size()-1);
         }
         String comment = latestComment!=null?latestComment.getComment():"";
+        log.error("latestComment for generateFeedbackLinkAndEmail - {}", comments);
+        log.error("Comment for generateFeedbackLinkAndEmail - {}", comment);
         String link = feedbackBaseUrl.concat("?").concat("guestName=")
                 .concat(curentUpdatedTicket.getFirstName().concat("%20").concat(curentUpdatedTicket.getLastName()))
                 .concat("&ticketId=").concat(String.valueOf(curentUpdatedTicket.getId()))
@@ -668,6 +663,8 @@ public class TicketServiceImpl implements TicketService {
             latestComment = comments.get(comments.size()-1);
         }
         String comment = latestComment!=null?latestComment.getComment():"";
+        log.error("comments for generateFeedbackLinkAndEmailForJunkTicket - {}", comments);
+        log.error("Comment for generateFeedbackLinkAndEmailForJunkTicket - {}", comment);
         String link = feedbackBaseUrl.concat("?").concat("guestName=")
                 .concat(curentUpdatedTicket.getFirstName().concat("%20").concat(curentUpdatedTicket.getLastName()))
                 .concat("&ticketId=").concat(String.valueOf(curentUpdatedTicket.getId()))
