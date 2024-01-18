@@ -51,4 +51,7 @@ public interface EmailService {
     void sendEscalationMailToGrievanceNodal(EmailDetails details, Ticket ticket);
 
     void sendCreateTicketOTPMail(String email, String otp, String recipientName, String subject, int otpExpirationMinutes);
+
+    void sendTestMail(String email);
+
 }
