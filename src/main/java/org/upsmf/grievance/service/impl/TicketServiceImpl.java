@@ -651,6 +651,8 @@ public class TicketServiceImpl implements TicketService {
             latestComment = comments.get(comments.size()-1);
         }
         String comment = latestComment!=null?latestComment.getComment():"";
+        log.error("latestComment for generateFeedbackLinkAndEmail - {}", comments);
+        log.error("Comment for generateFeedbackLinkAndEmail - {}", comment);
         String link = feedbackBaseUrl.concat("?").concat("guestName=")
                 .concat(curentUpdatedTicket.getFirstName().concat("%20").concat(curentUpdatedTicket.getLastName()))
                 .concat("&ticketId=").concat(String.valueOf(curentUpdatedTicket.getId()))
@@ -668,6 +670,8 @@ public class TicketServiceImpl implements TicketService {
             latestComment = comments.get(comments.size()-1);
         }
         String comment = latestComment!=null?latestComment.getComment():"";
+        log.error("comments for generateFeedbackLinkAndEmailForJunkTicket - {}", comments);
+        log.error("Comment for generateFeedbackLinkAndEmailForJunkTicket - {}", comment);
         String link = feedbackBaseUrl.concat("?").concat("guestName=")
                 .concat(curentUpdatedTicket.getFirstName().concat("%20").concat(curentUpdatedTicket.getLastName()))
                 .concat("&ticketId=").concat(String.valueOf(curentUpdatedTicket.getId()))
