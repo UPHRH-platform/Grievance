@@ -640,7 +640,7 @@ public class TicketServiceImpl implements TicketService {
                 .findByTicketId(curentUpdatedTicket.getId());
         log.error("comments fetch for generateFeedbackLinkAndEmail - {}", comments);
         Comments latestComment =null;
-        if(comments!=null && comments.size() > 1) {
+        if(comments!=null && comments.size() > 0) {
             latestComment = comments.get(comments.size()-1);
         }
         String comment = latestComment!=null?latestComment.getComment():"";
@@ -659,7 +659,7 @@ public class TicketServiceImpl implements TicketService {
     private void generateFeedbackLinkAndEmailForJunkTicket(Ticket curentUpdatedTicket) {
         List<Comments> comments = commentRepository.findAllByTicketId(curentUpdatedTicket.getId());
         Comments latestComment =null;
-        if(comments!=null && comments.size() > 1) {
+        if(comments!=null && comments.size() > 0) {
             latestComment = comments.get(comments.size()-1);
         }
         String comment = latestComment!=null?latestComment.getComment():"";
