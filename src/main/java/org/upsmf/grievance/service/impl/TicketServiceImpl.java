@@ -478,7 +478,7 @@ public class TicketServiceImpl implements TicketService {
         setUpdateTicket(updateTicketRequest, ticket);
         // if ticket is getting reopened we will reset escalation date time
         if(updateTicketRequest.getStatus().name().equalsIgnoreCase("OPEN")
-                && (updateTicketRequest.getStatus().name().equalsIgnoreCase("INVALID")
+                && (oldStatusValue.name().equalsIgnoreCase("INVALID")
                 || oldStatusValue.name().equalsIgnoreCase("CLOSED")) ) {
             // sending reopen ticket mail to nodal officer
             log.info("ticket is getting reopened we will reset escalation date time - {}", ticket.getId());
