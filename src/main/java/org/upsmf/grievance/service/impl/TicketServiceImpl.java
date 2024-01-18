@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.upsmf.grievance.dto.MailConfigDto;
 import org.upsmf.grievance.dto.TicketAuditDto;
 import org.upsmf.grievance.dto.TicketRequest;
 import org.upsmf.grievance.dto.UpdateTicketRequest;
@@ -20,10 +21,7 @@ import org.upsmf.grievance.exception.TicketException;
 import org.upsmf.grievance.model.*;
 import org.upsmf.grievance.repository.*;
 import org.upsmf.grievance.repository.es.TicketRepository;
-import org.upsmf.grievance.service.EmailService;
-import org.upsmf.grievance.service.OtpService;
-import org.upsmf.grievance.service.TicketAuditService;
-import org.upsmf.grievance.service.TicketService;
+import org.upsmf.grievance.service.*;
 import org.upsmf.grievance.util.DateUtil;
 import org.upsmf.grievance.util.ErrorCode;
 
@@ -73,7 +71,6 @@ public class TicketServiceImpl implements TicketService {
     @Autowired
     private TicketDepartmentRepository ticketDepartmentRepository;
 
-
     @Autowired
     private OtpService otpService;
 
@@ -91,6 +88,9 @@ public class TicketServiceImpl implements TicketService {
 
     @Autowired
     private TicketAuditService ticketAuditService;
+
+    @Autowired
+    private SchedulerConfigService schedulerConfigService;
 
     /**
      *
@@ -226,6 +226,27 @@ public class TicketServiceImpl implements TicketService {
         return ticket;
     }
 
+    private LocalDateTime getEscalationDateFromMailConfig(){
+        LocalDateTime escalationDateTime = LocalDateTime.now().plus(Long.valueOf(ticketEscalationDays), ChronoUnit.DAYS);
+        // get mail config value
+        List<MailConfigDto> mailConfig = schedulerConfigService.getAll();
+        log.debug("getting all config values - {}", mailConfig);
+        if(mailConfig != null && !mailConfig.isEmpty()) {
+            Optional<MailConfigDto> mailConfigDto = mailConfig.stream().filter(config -> config.isActive() && config.getAuthorityTitle().equalsIgnoreCase("SECRETARY"))
+                    .findFirst();
+            log.debug("finding matching config for secretary - {}", mailConfigDto);
+            if(mailConfigDto.isPresent()) {
+                MailConfigDto dto = mailConfigDto.get();
+                if(dto.getConfigValue() != null && dto.getConfigValue() > 0) {
+                    log.debug("config value for secretary - {}", dto.getConfigValue());
+                    escalationDateTime = LocalDateTime.now().plus(Long.valueOf(dto.getConfigValue()), ChronoUnit.DAYS);
+                }
+            }
+        }
+        log.debug("escalation time of new tickets - {}", escalationDateTime);
+        return escalationDateTime;
+    }
+
     /**
      *
      * @param ticketRequest
@@ -235,7 +256,7 @@ public class TicketServiceImpl implements TicketService {
     private Ticket createTicketWithDefault(TicketRequest ticketRequest) throws Exception {
 
         Timestamp currentTimestamp = new Timestamp(DateUtil.getCurrentDate().getTime());
-        LocalDateTime escalationDateTime = LocalDateTime.now().plus(Long.valueOf(ticketEscalationDays), ChronoUnit.DAYS);
+        LocalDateTime escalationDateTime = getEscalationDateFromMailConfig();
 
         Optional<TicketUserType> userTypeOptional = ticketUserTypeRepository
                 .findById(ticketRequest.getTicketUserTypeId());
@@ -455,6 +476,14 @@ public class TicketServiceImpl implements TicketService {
         TicketStatus oldStatusValue = ticket.getStatus();
         // set incoming values
         setUpdateTicket(updateTicketRequest, ticket);
+        // if ticket is getting reopened we will reset escalation date time
+        if(updateTicketRequest.getStatus().name().equalsIgnoreCase("OPEN")
+                && oldStatusValue.name().equalsIgnoreCase("CLOSED") ) {
+            // sending reopen ticket mail to nodal officer
+            log.info("ticket is getting reopened we will reset escalation date time - {}", ticket.getId());
+            LocalDateTime escalationDateTime = getEscalationDateFromMailConfig();
+            ticket.setEscalatedDate(Timestamp.valueOf(escalationDateTime));
+        }
         // update ticket in DB
         ticketRepository.save(ticket);
         ticket = getTicketById(ticket.getId());
