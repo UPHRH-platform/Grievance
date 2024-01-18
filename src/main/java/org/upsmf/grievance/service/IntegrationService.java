@@ -43,4 +43,6 @@ public interface IntegrationService {
     ResponseEntity<Boolean> getUserStatusByEmail(String userName);
 
     ResponseEntity<String> filterUsers(JsonNode payload) throws Exception;
+
+    ResponseEntity<String> sendTestMail(String email) throws Exception;
 }

@@ -205,4 +205,15 @@ public class UserController {
         }
     }
 
+    @GetMapping("/mail/test/{email}")
+    public ResponseEntity<String> testMail(@PathVariable("email") String email) {
+        try{
+            return integrationService.sendTestMail(email);
+        } catch (Exception e) {
+            log.error("error in firing test mail", e.getLocalizedMessage());
+            return ResponseEntity.internalServerError().body("Error in sending test mail - "
+                    .concat(e.getLocalizedMessage()));
+        }
+    }
+
 }

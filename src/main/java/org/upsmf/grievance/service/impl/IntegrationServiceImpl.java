@@ -243,7 +243,7 @@ public class IntegrationServiceImpl implements IntegrationService {
         if (attributeMap != null) {
             if (( attributeMap.containsKey("departmentId") && !attributeMap.containsKey("councilId") )
                     || ( !attributeMap.containsKey("departmentId") && attributeMap.containsKey("councilId") ) ) {
-                log.error("Missing one of attrbutes department id or council id - both are allowed or none");
+                log.error("Missing one of attributes department id or council id - both are allowed or none");
                 throw new InvalidDataException("Both council and department id are allowed or none");
             }
 
@@ -276,8 +276,8 @@ public class IntegrationServiceImpl implements IntegrationService {
 
                     return attributeMap;
                 } catch (NumberFormatException e) {
-                    log.error("Error while parsing departmetn | council id");
-                    throw new InvalidDataException("Department | coucil id only support number");
+                    log.error("Error while parsing department | council id");
+                    throw new InvalidDataException("Department | council id only support number");
                 } catch (CustomException e) {
                     log.error("Error while checking department and council for user");
                     throw new DataUnavailabilityException(e.getMessage(), "Error while checking department and council for user");
@@ -1122,5 +1122,11 @@ public class IntegrationServiceImpl implements IntegrationService {
             users = users.stream().filter(x -> x.getUserDepartment() != null && x.getUserDepartment().getDepartmentId().longValue() == finalDepartmentId.longValue()).collect(Collectors.toList());
         }
         return users;
+    }
+
+    @Override
+    public ResponseEntity<String> sendTestMail(String email) throws Exception {
+        emailService.sendTestMail(email);
+        return ResponseEntity.ok("Test mail sent to email - ".concat(email));
     }
 }
