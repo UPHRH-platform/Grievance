@@ -566,15 +566,7 @@ public class TicketServiceImpl implements TicketService {
         thread.start();
     }
     private void sendMailForFeedbackLinkAndEmail(Ticket ticket) {
-        Ticket finalTicket = ticket;
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                generateFeedbackLinkAndEmail(finalTicket);
-            }
-        };
-        Thread thread = new Thread(runnable);
-        thread.start();
+        generateFeedbackLinkAndEmail(ticket);
     }
     private void sendMailForUnJunk(Ticket ticket, org.upsmf.grievance.model.es.Ticket curentUpdatedTicket) {
         Ticket finalTicket = ticket;
@@ -643,9 +635,10 @@ public class TicketServiceImpl implements TicketService {
 
     private void generateFeedbackLinkAndEmail(Ticket curentUpdatedTicket) {
         List<Comments> comments = commentRepository.findAllByTicketId(curentUpdatedTicket.getId());
+        log.error("Ticket for generateFeedbackLinkAndEmail - {}", curentUpdatedTicket);
         List<AssigneeTicketAttachment> assigneeTicketAttachments = assigneeTicketAttachmentRepository
                 .findByTicketId(curentUpdatedTicket.getId());
-
+        log.error("comments fetch for generateFeedbackLinkAndEmail - {}", comments);
         Comments latestComment =null;
         if(comments!=null && comments.size() > 1) {
             latestComment = comments.get(comments.size()-1);
