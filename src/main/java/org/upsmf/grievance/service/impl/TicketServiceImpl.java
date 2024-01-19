@@ -219,9 +219,12 @@ public class TicketServiceImpl implements TicketService {
         Ticket ticket = createTicketWithDefault(ticketRequest);
         // create ticket
         ticket = saveWithAttachment(ticket, ticketRequest.getAttachmentUrls());
+        // get raiser urls
+        List<RaiserTicketAttachment> raiserTicketAttachments = raiserTicketAttachmentRepository
+                .findByTicketId(ticket.getId());
         // send mail
         EmailDetails emailDetails = EmailDetails.builder().recipient(ticket.getEmail()).subject("New Complaint Registration").build();
-        emailService.sendCreateTicketMail(emailDetails, ticket);
+        emailService.sendCreateTicketMail(emailDetails, ticket, raiserTicketAttachments);
         log.debug("ticket details - {}",ticket);
         return ticket;
     }
@@ -668,6 +671,8 @@ public class TicketServiceImpl implements TicketService {
         log.error("Ticket for generateFeedbackLinkAndEmail - {}", curentUpdatedTicket);
         List<AssigneeTicketAttachment> assigneeTicketAttachments = assigneeTicketAttachmentRepository
                 .findByTicketId(curentUpdatedTicket.getId());
+        List<RaiserTicketAttachment> raiserTicketAttachments = raiserTicketAttachmentRepository
+                .findByTicketId(curentUpdatedTicket.getId());
         log.error("comments fetch for generateFeedbackLinkAndEmail - {}", comments);
         Comments latestComment =null;
         if(comments!=null && comments.size() > 0) {
@@ -684,7 +689,7 @@ public class TicketServiceImpl implements TicketService {
                 .concat("&phone=").concat(curentUpdatedTicket.getPhone())
                 .concat("&ticketTitle=").concat(curentUpdatedTicket.getDescription());
         EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Resolution of Your Grievance").recipient(curentUpdatedTicket.getEmail()).build();
-        emailService.sendClosedTicketMail(resolutionOfYourGrievance, curentUpdatedTicket, comment, assigneeTicketAttachments, link);
+        emailService.sendClosedTicketMail(resolutionOfYourGrievance, curentUpdatedTicket, comment, assigneeTicketAttachments, link, raiserTicketAttachments);
     }
     private void generateFeedbackLinkAndEmailForJunkTicket(Ticket curentUpdatedTicket) {
         List<Comments> comments = commentRepository.findAllByTicketId(curentUpdatedTicket.getId());

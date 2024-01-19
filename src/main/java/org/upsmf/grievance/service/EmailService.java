@@ -12,11 +12,11 @@ public interface EmailService {
 
     // Method
     // To send a simple email
-    void sendCreateTicketMail(EmailDetails details, Ticket ticket);
+    void sendCreateTicketMail(EmailDetails details, Ticket ticket, List<RaiserTicketAttachment> raiserTicketAttachments);
 
     void sendUpdateTicketMail(EmailDetails details, Ticket ticket);
 
-    void sendClosedTicketMail(EmailDetails details, Ticket ticket, String comment, List<AssigneeTicketAttachment> attachments, String feedbackURL);
+    void sendClosedTicketMail(EmailDetails details, Ticket ticket, String comment, List<AssigneeTicketAttachment> attachments, String feedbackURL, List<RaiserTicketAttachment> raiserTicketAttachments);
     void sendJunkMail(EmailDetails details, Ticket ticket, String comment, List<AssigneeTicketAttachment> attachments, String feedbackURL);
     void sendSimpleMail(EmailDetails details);
 

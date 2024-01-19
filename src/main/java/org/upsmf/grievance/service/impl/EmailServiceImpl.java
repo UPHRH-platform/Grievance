@@ -65,12 +65,12 @@ public class EmailServiceImpl implements EmailService {
     private TicketDepartmentRepository ticketDepartmentRepository;
 
     @Override
-    public void sendCreateTicketMail(EmailDetails details, Ticket ticket) {
+    public void sendCreateTicketMail(EmailDetails details, Ticket ticket, List<RaiserTicketAttachment> raiserTicketAttachments) {
 //        getUserByDepartmentId(ticket.getTicketDepartment().getId());
 
         // sending mail activity in seperate thread
         Runnable mailThread = () -> {   // lambda expression
-            sendMailToRaiser(details, ticket);
+            sendMailToRaiser(details, ticket, raiserTicketAttachments);
             sendMailToAdmin(details, ticket);
             //sendMailToNodalOfficer(details, ticket);
         };
@@ -87,10 +87,10 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendClosedTicketMail(EmailDetails details, Ticket ticket, String comment, List<AssigneeTicketAttachment> attachments, String feedbackURL) {
+    public void sendClosedTicketMail(EmailDetails details, Ticket ticket, String comment, List<AssigneeTicketAttachment> attachments, String feedbackURL, List<RaiserTicketAttachment> raiserTicketAttachments) {
         // Try block to check for exceptions
         Runnable mailThread = () -> {   // lambda expression
-            sendFeedbackMailToRaiser(details, ticket, comment, attachments, feedbackURL);
+            sendFeedbackMailToRaiser(details, ticket, comment, attachments, feedbackURL, raiserTicketAttachments);
         };
         new Thread(mailThread).start();
 
@@ -108,7 +108,7 @@ public class EmailServiceImpl implements EmailService {
 
     private void sendFeedbackMailToRaiser(EmailDetails details, Ticket ticket,
                                           String comment, List<AssigneeTicketAttachment> attachments,
-                                          String feedbackUrl) {
+                                          String feedbackUrl, List<RaiserTicketAttachment> raiserTicketAttachments) {
         try {
             MimeMessagePreparator preparator = new MimeMessagePreparator() {
                 public void prepare(MimeMessage mimeMessage) throws Exception {
@@ -130,6 +130,7 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("comment", comment);
                     velocityContext.put("url", feedbackUrl);
                     velocityContext.put("docLinks", attachments);
+                    velocityContext.put("originalDocLinks", raiserTicketAttachments);
                     // signature
                     createCommonMailSignature(velocityContext, message);
                     // merge mail body
@@ -486,7 +487,7 @@ public class EmailServiceImpl implements EmailService {
         message.setFrom(mailSender);
     }
 
-    private void sendMailToRaiser(EmailDetails details, Ticket ticket) {
+    private void sendMailToRaiser(EmailDetails details, Ticket ticket, List<RaiserTicketAttachment> raiserTicketAttachments) {
         try {
             MimeMessagePreparator preparator = new MimeMessagePreparator() {
                 public void prepare(MimeMessage mimeMessage) throws Exception {
@@ -497,7 +498,9 @@ public class EmailServiceImpl implements EmailService {
                     VelocityContext velocityContext = new VelocityContext();
                     velocityContext.put("first_name", ticket.getFirstName());
                     velocityContext.put("id", ticket.getId());
+                    velocityContext.put("description", ticket.getDescription());
                     velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
+                    velocityContext.put("originalDocLinks", raiserTicketAttachments);
                     // signature
                     createCommonMailSignature(velocityContext, message);
                     // merge mail body

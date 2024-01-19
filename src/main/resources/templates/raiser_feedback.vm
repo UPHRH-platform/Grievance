@@ -89,6 +89,7 @@
                                                                                         <p>
                                                                                             <div>Grievance Details:</div>
                                                                                             <div>Grievance ID: <strong>${id}</strong></div>
+                                                                                            <div>Description: <span><strong>${description}</strong></span></div>
                                                                                             <div>Date of Registration: <strong>${created_date}</strong></div>
                                                                                             <div>Nature of Grievance: <strong>${department}</strong></div>
                                                                                             <div>Resolution Details: <strong>${comment}</strong></div>
@@ -96,6 +97,18 @@
                                                                                         <p>If you have any further questions or require additional information regarding the resolution, please do not hesitate to reach out to us at ${email}.</p>
                                                                                         <p>We want to assure you that we take all grievances seriously and are committed to ensuring a positive resolution. Your feedback is invaluable to us, if the problem is solved to your satisfaction, please spare few seconds to let us know about your support experience by participating in the rating below.</p>
                                                                                         <p><a href="${url}"><img src="https://storage.googleapis.com/dev-public-upsmf/grievance/Picture%201.png" alt="feedback_link" width="400px"></a></p>
+                                                                                        <p>#if (${originalDocLinks})
+                                                                                            #set ($counter = 0)
+                                                                                            <div> <strong> Original document links </strong> </div>
+                                                                                            <p style="color:blue;">
+
+                                                                                            #foreach( $originalDocLink in $originalDocLinks )
+                                                                                                #set ($counter = $counter + 1)
+                                                                                                    <strong ><a href="${originalDocLink.attachment_url}">Document $counter</a></strong>
+                                                                                            #end
+                                                                                            </p>
+                                                                                           #end
+                                                                                        </p>
                                                                                         <p>#if (${docLinks})
                                                                                             #set ($counter = 0)
                                                                                             <div> <strong> Attached document links </strong> </div>
