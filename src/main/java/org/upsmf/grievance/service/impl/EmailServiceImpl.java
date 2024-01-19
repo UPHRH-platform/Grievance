@@ -130,6 +130,7 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("comment", comment);
                     velocityContext.put("url", feedbackUrl);
                     velocityContext.put("docLinks", attachments);
+                    velocityContext.put("description", ticket.getDescription());
                     velocityContext.put("originalDocLinks", raiserTicketAttachments);
                     // signature
                     createCommonMailSignature(velocityContext, message);
