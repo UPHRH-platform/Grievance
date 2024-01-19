@@ -500,7 +500,7 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("id", ticket.getId());
                     velocityContext.put("description", ticket.getDescription());
                     velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
-                    velocityContext.put("originalDocLinks", raiserTicketAttachments);
+                    velocityContext.put("docLinks", raiserTicketAttachments);
                     // signature
                     createCommonMailSignature(velocityContext, message);
                     // merge mail body
