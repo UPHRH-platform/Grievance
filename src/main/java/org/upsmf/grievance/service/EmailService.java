@@ -1,10 +1,7 @@
 package org.upsmf.grievance.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.upsmf.grievance.model.AssigneeTicketAttachment;
-import org.upsmf.grievance.model.EmailDetails;
-import org.upsmf.grievance.model.Ticket;
-import org.upsmf.grievance.model.User;
+import org.upsmf.grievance.model.*;
 
 import java.util.List;
 
