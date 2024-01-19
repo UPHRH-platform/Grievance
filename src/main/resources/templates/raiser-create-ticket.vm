@@ -89,11 +89,26 @@
                                                                                         <p>Please be assured that we have registered your grievance (details below), and our team will thoroughly investigate the matter to understand the root cause and identify the best course of action to resolve it. We aim to respond to your complaint within 7 days.</p>
                                                                                         <p>
                                                                                             <div>Grievance ID: <strong>${id}</strong></div>
+                                                                                            <div>Description: <strong>${description}</strong></div>
+                                                                                            <div>Council: <strong>${council}</strong></div>
+                                                                                            <div>Department: <strong>${department}</strong></div>
                                                                                             <div>Date: <strong>${created_date}</strong></div>
                                                                                         </p>
                                                                                         <p>In the meantime, we request your patience and cooperation as we work towards resolving the issue. Your satisfaction is our top priority, and we will do our utmost to rectify the situation to your complete satisfaction.</p>
                                                                                         <p>If you have any supporting documents or relevant information related to your complaint, please feel free to attach them to this email.</p>
                                                                                         <p>We truly appreciate your understanding and cooperation.</p>
+                                                                                        <p>#if (${docLinks})
+                                                                                            #set ($counter = 0)
+                                                                                            <div> <strong> Attached document links </strong> </div>
+                                                                                            <p style="color:blue;">
+
+                                                                                            #foreach( $docLink in $docLinks )
+                                                                                                #set ($counter = $counter + 1)
+                                                                                                    <strong ><a href="${docLink.attachment_url}">Document $counter</a></strong>
+                                                                                            #end
+                                                                                            </p>
+                                                                                           #end
+                                                                                        </p>
                                                                                     </td>
                                                                                 </tr>
                                                                                 <tr></tr>
