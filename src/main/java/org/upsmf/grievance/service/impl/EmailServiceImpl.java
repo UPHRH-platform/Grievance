@@ -500,6 +500,8 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("first_name", ticket.getFirstName());
                     velocityContext.put("id", ticket.getId());
                     velocityContext.put("description", ticket.getDescription());
+                    velocityContext.put("department", ticket.getTicketDepartment().getTicketDepartmentName());
+                    velocityContext.put("council", ticket.getTicketCouncil().getTicketCouncilName());
                     velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                     velocityContext.put("docLinks", raiserTicketAttachments);
                     // signature

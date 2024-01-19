@@ -90,6 +90,8 @@
                                                                                         <p>
                                                                                             <div>Grievance ID: <strong>${id}</strong></div>
                                                                                             <div>Description: <strong>${description}</strong></div>
+                                                                                            <div>Council: <strong>${council}</strong></div>
+                                                                                            <div>Department: <strong>${department}</strong></div>
                                                                                             <div>Date: <strong>${created_date}</strong></div>
                                                                                         </p>
                                                                                         <p>In the meantime, we request your patience and cooperation as we work towards resolving the issue. Your satisfaction is our top priority, and we will do our utmost to rectify the situation to your complete satisfaction.</p>
