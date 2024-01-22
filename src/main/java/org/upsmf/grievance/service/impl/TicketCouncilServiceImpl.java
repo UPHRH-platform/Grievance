@@ -30,6 +30,9 @@ public class TicketCouncilServiceImpl implements TicketCouncilService {
     private TicketCouncilRepository ticketCouncilRepository;
 
     @Autowired
+    private UserDepartmentRepository userDepartmentRepository;
+
+    @Autowired
     private UserRepository userRepository;
     /**
      * @param ticketCouncilDto
@@ -166,6 +169,7 @@ public class TicketCouncilServiceImpl implements TicketCouncilService {
                             .ticketDepartmentId(ticketDepartment.getId())
                             .ticketDepartmentName(ticketDepartment.getTicketDepartmentName())
                             .status(ticketDepartment.getStatus())
+                            .userCount(ticketDepartment.getUserCount())
                             .build()
                     ).collect(Collectors.toList());
 

@@ -30,6 +30,8 @@ public interface UserRepository extends PagingAndSortingRepository<User,Long> {
 
     Optional<User> findByUserDepartment(UserDepartment userDepartment);
 
+    Optional<List<User>> findAllByUserDepartment(UserDepartment userDepartment);
+
     List<User> findAllByUserDepartmentIn(List<UserDepartment> userDepartmentList);
 
     @Query(value = "select * from users u where status = 1", nativeQuery = true)
@@ -39,4 +41,14 @@ public interface UserRepository extends PagingAndSortingRepository<User,Long> {
     List<User> findAllUserInIds(List<Long> ids);
 
     Optional<User> findByUsernameAndStatus(String userName, int status);
+
+    @Query("SELECT u FROM User u WHERE LOWER(u.email) LIKE LOWER(CONCAT('%', ?1,'%')) "
+            + "OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', ?1,'%'))"
+            + "OR LOWER(u.lastname) LIKE LOWER(CONCAT('%', ?1,'%'))"
+            + "OR LOWER(u.phoneNumber) LIKE LOWER(CONCAT('%', ?1,'%'))")
+    List<User> findAllByKeyword(String searchKeyword);
+
+    @Override
+    List<User> findAll();
+
 }

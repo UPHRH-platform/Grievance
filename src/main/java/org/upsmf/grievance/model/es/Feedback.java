@@ -34,4 +34,7 @@ public class Feedback {
 
     @Field(name = "comment")
     private String comment;
+
+    @Field(name = "ticket_id")
+    private String ticketId;
 }

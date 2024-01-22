@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.upsmf.grievance.dto.MailConfigDto;
 import org.upsmf.grievance.dto.TicketAuditDto;
 import org.upsmf.grievance.dto.TicketRequest;
 import org.upsmf.grievance.dto.UpdateTicketRequest;
@@ -20,10 +21,7 @@ import org.upsmf.grievance.exception.TicketException;
 import org.upsmf.grievance.model.*;
 import org.upsmf.grievance.repository.*;
 import org.upsmf.grievance.repository.es.TicketRepository;
-import org.upsmf.grievance.service.EmailService;
-import org.upsmf.grievance.service.OtpService;
-import org.upsmf.grievance.service.TicketAuditService;
-import org.upsmf.grievance.service.TicketService;
+import org.upsmf.grievance.service.*;
 import org.upsmf.grievance.util.DateUtil;
 import org.upsmf.grievance.util.ErrorCode;
 
@@ -73,12 +71,14 @@ public class TicketServiceImpl implements TicketService {
     @Autowired
     private TicketDepartmentRepository ticketDepartmentRepository;
 
-
     @Autowired
     private OtpService otpService;
 
     @Value("${feedback.base.url}")
     private String feedbackBaseUrl;
+
+    @Value("${ticket.otp.enable}")
+    private Boolean otpEnabled = true;
 
     @Autowired
     private EmailService emailService;
@@ -88,6 +88,9 @@ public class TicketServiceImpl implements TicketService {
 
     @Autowired
     private TicketAuditService ticketAuditService;
+
+    @Autowired
+    private SchedulerConfigService schedulerConfigService;
 
     /**
      *
@@ -133,8 +136,27 @@ public class TicketServiceImpl implements TicketService {
                     name = name.substring(separatorIndex+1, name.length());
                 }
                 log.info("attachment name - {}", name);
+                // remove encoded string from name
+                name = removeEncodedCharacters(name);
             }
         }
+        return name;
+    }
+
+    private static String removeEncodedCharacters(String name) {
+        name = name.replace("%20", " ");
+        name = name.replace("%28", "(");
+        name = name.replace("%29", ")");
+        name = name.replace("%2D", "-");
+        name = name.replace("%5F", "_");
+        name = name.replace("%22", "_");
+        name = name.replace("%2A", "_");
+        name = name.replace("%2B", "_");
+        name = name.replace("%3A", "_");
+        name = name.replace("%E2%80", "_");
+        name = name.replace("%AF", "_");
+
+        log.info("attachment name after removing encoded characters - {}", name);
         return name;
     }
 
@@ -178,28 +200,54 @@ public class TicketServiceImpl implements TicketService {
         validateTicketRequest(ticketRequest);
 
         // validate OTP
-        boolean isValid = otpService.validateOtp(ticketRequest.getEmail(), ticketRequest.getOtp());
-        if(!isValid) {
-            throw new TicketException("Invalid mail OTP, Please enter correct OTP", ErrorCode.TKT_001,
-                    "Error while matching mail OTP");
-        } else {
-            boolean isMobileOtpValid = otpService.validateMobileOtp(ticketRequest.getPhone(),
-                    ticketRequest.getMobileOtp());
+        if(otpEnabled) {
+            boolean isValid = otpService.validateOtp(ticketRequest.getEmail(), ticketRequest.getOtp());
+            if(!isValid) {
+                throw new TicketException("Invalid mail OTP, Please enter correct OTP", ErrorCode.TKT_001,
+                        "Error while matching mail OTP");
+            } else {
+                boolean isMobileOtpValid = otpService.validateMobileOtp(ticketRequest.getPhone(),
+                        ticketRequest.getMobileOtp());
 
-            if (!isMobileOtpValid) {
-                throw new TicketException("Invalid mobile OTP, Please enter correct OTP", ErrorCode.TKT_001,
-                        "Error while matching mobile OTP");
+                if (!isMobileOtpValid) {
+                    throw new TicketException("Invalid mobile OTP, Please enter correct OTP", ErrorCode.TKT_001,
+                            "Error while matching mobile OTP");
+                }
             }
         }
         // set default value for creating ticket
         Ticket ticket = createTicketWithDefault(ticketRequest);
         // create ticket
         ticket = saveWithAttachment(ticket, ticketRequest.getAttachmentUrls());
+        // get raiser urls
+        List<RaiserTicketAttachment> raiserTicketAttachments = raiserTicketAttachmentRepository
+                .findByTicketId(ticket.getId());
         // send mail
         EmailDetails emailDetails = EmailDetails.builder().recipient(ticket.getEmail()).subject("New Complaint Registration").build();
-        emailService.sendCreateTicketMail(emailDetails, ticket);
+        emailService.sendCreateTicketMail(emailDetails, ticket, raiserTicketAttachments);
         log.debug("ticket details - {}",ticket);
         return ticket;
+    }
+
+    private LocalDateTime getEscalationDateFromMailConfig(){
+        LocalDateTime escalationDateTime = LocalDateTime.now().plus(Long.valueOf(ticketEscalationDays), ChronoUnit.DAYS);
+        // get mail config value
+        List<MailConfigDto> mailConfig = schedulerConfigService.getAll();
+        log.debug("getting all config values - {}", mailConfig);
+        if(mailConfig != null && !mailConfig.isEmpty()) {
+            Optional<MailConfigDto> mailConfigDto = mailConfig.stream().filter(config -> config.isActive() && config.getAuthorityTitle().equalsIgnoreCase("SECRETARY"))
+                    .findFirst();
+            log.debug("finding matching config for secretary - {}", mailConfigDto);
+            if(mailConfigDto.isPresent()) {
+                MailConfigDto dto = mailConfigDto.get();
+                if(dto.getConfigValue() != null && dto.getConfigValue() > 0) {
+                    log.debug("config value for secretary - {}", dto.getConfigValue());
+                    escalationDateTime = LocalDateTime.now().plus(Long.valueOf(dto.getConfigValue()), ChronoUnit.DAYS);
+                }
+            }
+        }
+        log.debug("escalation time of new tickets - {}", escalationDateTime);
+        return escalationDateTime;
     }
 
     /**
@@ -211,7 +259,7 @@ public class TicketServiceImpl implements TicketService {
     private Ticket createTicketWithDefault(TicketRequest ticketRequest) throws Exception {
 
         Timestamp currentTimestamp = new Timestamp(DateUtil.getCurrentDate().getTime());
-        LocalDateTime escalationDateTime = LocalDateTime.now().plus(Long.valueOf(ticketEscalationDays), ChronoUnit.DAYS);
+        LocalDateTime escalationDateTime = getEscalationDateFromMailConfig();
 
         Optional<TicketUserType> userTypeOptional = ticketUserTypeRepository
                 .findById(ticketRequest.getTicketUserTypeId());
@@ -257,7 +305,7 @@ public class TicketServiceImpl implements TicketService {
                 .updatedDate(currentTimestamp)
                 .lastUpdatedBy("-1")//need to get user details and add id or name
                 .escalated(false)
-                .escalatedDate(Timestamp.valueOf(escalationDateTime))
+                //.escalatedDate(Timestamp.valueOf(escalationDateTime))
                 .escalatedTo("-1")
                 .status(TicketStatus.OPEN)
                 .requestType(ticketRequest.getRequestType())
@@ -431,6 +479,15 @@ public class TicketServiceImpl implements TicketService {
         TicketStatus oldStatusValue = ticket.getStatus();
         // set incoming values
         setUpdateTicket(updateTicketRequest, ticket);
+        // if ticket is getting reopened we will reset escalation date time
+        if(updateTicketRequest.getStatus().name().equalsIgnoreCase("OPEN")
+                && (oldStatusValue.name().equalsIgnoreCase("INVALID")
+                || oldStatusValue.name().equalsIgnoreCase("CLOSED")) ) {
+            // sending reopen ticket mail to nodal officer
+            log.info("ticket is getting reopened we will reset escalation date time - {}", ticket.getId());
+            LocalDateTime escalationDateTime = getEscalationDateFromMailConfig();
+            ticket.setEscalatedDate(Timestamp.valueOf(escalationDateTime));
+        }
         // update ticket in DB
         ticketRepository.save(ticket);
         ticket = getTicketById(ticket.getId());
@@ -477,10 +534,26 @@ public class TicketServiceImpl implements TicketService {
                         && !ticket.getOwnerEmail().isBlank()) {
                     sendReopenTicketMailToNodal(ticket, curentUpdatedTicket);
                 }
+                sendReopenTicketMailToRaiser(ticket, curentUpdatedTicket);
+                return ticket;
             }
             sendUpdateTicketMail(ticket, curentUpdatedTicket);
             return ticket;
         }
+    }
+
+    private void sendReopenTicketMailToRaiser(Ticket ticket, org.upsmf.grievance.model.es.Ticket curentUpdatedTicket) {
+        Ticket finalTicket = ticket;
+        org.upsmf.grievance.model.es.Ticket finalCurentUpdatedTicket = curentUpdatedTicket;
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Re-opening of Your Grievance Ticket - " + finalCurentUpdatedTicket.getTicketId()).recipient(finalCurentUpdatedTicket.getEmail()).build();
+                emailService.sendUpdateTicketMail(resolutionOfYourGrievance, finalTicket);
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
     }
 
     private void sendReopenTicketMailToNodal(Ticket ticket, org.upsmf.grievance.model.es.Ticket curentUpdatedTicket) {
@@ -526,15 +599,7 @@ public class TicketServiceImpl implements TicketService {
         thread.start();
     }
     private void sendMailForFeedbackLinkAndEmail(Ticket ticket) {
-        Ticket finalTicket = ticket;
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                generateFeedbackLinkAndEmail(finalTicket);
-            }
-        };
-        Thread thread = new Thread(runnable);
-        thread.start();
+        generateFeedbackLinkAndEmail(ticket);
     }
     private void sendMailForUnJunk(Ticket ticket, org.upsmf.grievance.model.es.Ticket curentUpdatedTicket) {
         Ticket finalTicket = ticket;
@@ -603,14 +668,19 @@ public class TicketServiceImpl implements TicketService {
 
     private void generateFeedbackLinkAndEmail(Ticket curentUpdatedTicket) {
         List<Comments> comments = commentRepository.findAllByTicketId(curentUpdatedTicket.getId());
+        log.error("Ticket for generateFeedbackLinkAndEmail - {}", curentUpdatedTicket);
         List<AssigneeTicketAttachment> assigneeTicketAttachments = assigneeTicketAttachmentRepository
                 .findByTicketId(curentUpdatedTicket.getId());
-
+        List<RaiserTicketAttachment> raiserTicketAttachments = raiserTicketAttachmentRepository
+                .findByTicketId(curentUpdatedTicket.getId());
+        log.error("comments fetch for generateFeedbackLinkAndEmail - {}", comments);
         Comments latestComment =null;
         if(comments!=null && comments.size() > 0) {
             latestComment = comments.get(comments.size()-1);
         }
         String comment = latestComment!=null?latestComment.getComment():"";
+        log.error("latestComment for generateFeedbackLinkAndEmail - {}", comments);
+        log.error("Comment for generateFeedbackLinkAndEmail - {}", comment);
         String link = feedbackBaseUrl.concat("?").concat("guestName=")
                 .concat(curentUpdatedTicket.getFirstName().concat("%20").concat(curentUpdatedTicket.getLastName()))
                 .concat("&ticketId=").concat(String.valueOf(curentUpdatedTicket.getId()))
@@ -619,7 +689,7 @@ public class TicketServiceImpl implements TicketService {
                 .concat("&phone=").concat(curentUpdatedTicket.getPhone())
                 .concat("&ticketTitle=").concat(curentUpdatedTicket.getDescription());
         EmailDetails resolutionOfYourGrievance = EmailDetails.builder().subject("Resolution of Your Grievance").recipient(curentUpdatedTicket.getEmail()).build();
-        emailService.sendClosedTicketMail(resolutionOfYourGrievance, curentUpdatedTicket, comment, assigneeTicketAttachments, link);
+        emailService.sendClosedTicketMail(resolutionOfYourGrievance, curentUpdatedTicket, comment, assigneeTicketAttachments, link, raiserTicketAttachments);
     }
     private void generateFeedbackLinkAndEmailForJunkTicket(Ticket curentUpdatedTicket) {
         List<Comments> comments = commentRepository.findAllByTicketId(curentUpdatedTicket.getId());
@@ -628,6 +698,8 @@ public class TicketServiceImpl implements TicketService {
             latestComment = comments.get(comments.size()-1);
         }
         String comment = latestComment!=null?latestComment.getComment():"";
+        log.error("comments for generateFeedbackLinkAndEmailForJunkTicket - {}", comments);
+        log.error("Comment for generateFeedbackLinkAndEmailForJunkTicket - {}", comment);
         String link = feedbackBaseUrl.concat("?").concat("guestName=")
                 .concat(curentUpdatedTicket.getFirstName().concat("%20").concat(curentUpdatedTicket.getLastName()))
                 .concat("&ticketId=").concat(String.valueOf(curentUpdatedTicket.getId()))

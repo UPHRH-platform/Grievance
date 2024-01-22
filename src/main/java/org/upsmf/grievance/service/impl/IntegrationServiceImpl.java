@@ -1,6 +1,8 @@
 package org.upsmf.grievance.service.impl;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -22,28 +24,29 @@ import org.springframework.lang.NonNull;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.upsmf.grievance.dto.CreateUserDto;
-import org.upsmf.grievance.dto.UpdateUserDto;
-import org.upsmf.grievance.dto.UserCredentials;
-import org.upsmf.grievance.dto.UserResponseDto;
+import org.upsmf.grievance.dto.*;
 import org.upsmf.grievance.enums.Department;
 import org.upsmf.grievance.exception.*;
 import org.upsmf.grievance.exception.runtime.InvalidRequestException;
-import org.upsmf.grievance.model.*;
-import org.upsmf.grievance.repository.UserDepartmentRepository;
+import org.upsmf.grievance.model.Role;
+import org.upsmf.grievance.model.User;
+import org.upsmf.grievance.model.UserDepartment;
+import org.upsmf.grievance.model.UserRole;
 import org.upsmf.grievance.repository.RoleRepository;
+import org.upsmf.grievance.repository.UserDepartmentRepository;
 import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.repository.UserRoleRepository;
 import org.upsmf.grievance.service.*;
 import org.upsmf.grievance.util.DateUtil;
 import org.upsmf.grievance.util.ErrorCode;
 
-import javax.transaction.Transactional;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @Service
@@ -140,6 +143,9 @@ public class IntegrationServiceImpl implements IntegrationService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private SchedulerConfigService schedulerConfigService;
+
     @Override
     public User addUser(User user) {
         return userRepository.save(user);
@@ -188,6 +194,7 @@ public class IntegrationServiceImpl implements IntegrationService {
             JsonNode payloadRoot = mapper.createObjectNode();
             ((ObjectNode) payloadRoot).put("request", payload);
             ResponseEntity<String> getUsersResponse = searchUsers(payloadRoot);
+            log.info("create user search user response - {}", getUsersResponse);
             if (getUsersResponse.getStatusCode() == HttpStatus.OK) {
                 String getUsersResponseBody = getUsersResponse.getBody();
                 JsonNode getUsersJsonNode = mapper.readTree(getUsersResponseBody);
@@ -212,6 +219,11 @@ public class IntegrationServiceImpl implements IntegrationService {
                     User savedUser = userRepository.save(newUser);
                     // create user role mapping
                     createUserRoleMapping(user, savedUser);
+                    // update mail config if user role secretary
+                    boolean superadmin = Arrays.stream(savedUser.getRoles()).anyMatch(role -> role.equalsIgnoreCase("SUPERADMIN"));
+                    if(superadmin) {
+                        updateMailConfigEmail(savedUser.getEmail());
+                    }
 
                     // send mail with password
 //                    sendCreateUserEmail(savedUser.getEmail(), savedUser.getUsername(), generatePassword);
@@ -237,7 +249,7 @@ public class IntegrationServiceImpl implements IntegrationService {
         if (attributeMap != null) {
             if (( attributeMap.containsKey("departmentId") && !attributeMap.containsKey("councilId") )
                     || ( !attributeMap.containsKey("departmentId") && attributeMap.containsKey("councilId") ) ) {
-                log.error("Missing one of attrbutes department id or council id - both are allowed or none");
+                log.error("Missing one of attributes department id or council id - both are allowed or none");
                 throw new InvalidDataException("Both council and department id are allowed or none");
             }
 
@@ -270,8 +282,8 @@ public class IntegrationServiceImpl implements IntegrationService {
 
                     return attributeMap;
                 } catch (NumberFormatException e) {
-                    log.error("Error while parsing departmetn | council id");
-                    throw new InvalidDataException("Department | coucil id only support number");
+                    log.error("Error while parsing department | council id");
+                    throw new InvalidDataException("Department | council id only support number");
                 } catch (CustomException e) {
                     log.error("Error while checking department and council for user");
                     throw new DataUnavailabilityException(e.getMessage(), "Error while checking department and council for user");
@@ -329,7 +341,7 @@ public class IntegrationServiceImpl implements IntegrationService {
         }
 
         if (StringUtils.isEmpty(attributeMap.get("phoneNumber"))  ) {
-            throw new UserException("Phone numeber is missing", ErrorCode.USER_002);
+            throw new UserException("Phone number is missing", ErrorCode.USER_002);
         }
 
         if (StringUtils.isEmpty(attributeMap.get("Role"))  ) {
@@ -338,12 +350,13 @@ public class IntegrationServiceImpl implements IntegrationService {
 
         String role = userDto.getAttributes().get(ROLE);
 
-        if (role != null && !role.isBlank() && ("SUPERADMIN".equalsIgnoreCase(role) || "ADMIN".equalsIgnoreCase(role))) {
+        if (role != null && !role.isBlank() && ("SUPERADMIN".equalsIgnoreCase(role)
+                || "ADMIN".equalsIgnoreCase(role) || "GRIEVANCEADMIN".equalsIgnoreCase(role))) {
             Role roleDetails = roleRepository.findByName(role);
 
             if(roleDetails == null) {
-                log.warn("SUPERADMIN/ADMIN role is not available");
-                throw new UserException("SUPERADMIN/ADMIN Role is missing", ErrorCode.USER_002);
+                log.warn("Secretary/Admin/Grievance Nodal role is not available");
+                throw new UserException("Secretary/Admin/Grievance Nodal Role is missing", ErrorCode.USER_002);
             }
 
             List<UserRole> userRoleList = userRoleRepository.findByRoleId(roleDetails.getId());
@@ -370,11 +383,15 @@ public class IntegrationServiceImpl implements IntegrationService {
 
             if (userOptional.isPresent()) {
                 if (("SUPERADMIN".equalsIgnoreCase(role))) {
-                    throw new UserException("Secratary already exist", ErrorCode.USER_002);
+                    throw new UserException("Application is designed to have one Secretary.", ErrorCode.USER_002);
                 }
 
                 if (("ADMIN".equalsIgnoreCase(role))) {
-                    throw new UserException("Admin already exist", ErrorCode.USER_002);
+                    throw new UserException("Application is designed to have one Admin.", ErrorCode.USER_002);
+                }
+
+                if (("GRIEVANCEADMIN".equalsIgnoreCase(role))) {
+                    throw new UserException("Application is designed to have one Grievance Nodal.", ErrorCode.USER_002);
                 }
             }
         }
@@ -530,12 +547,48 @@ public class IntegrationServiceImpl implements IntegrationService {
 
             esTicketUpdateService.updateEsTicketByUserId(userDto);
             esTicketUpdateService.updateJunkByEsTicketByUserId(userDto);
+            // update mail config if user role secretary
+            updateSecretaryMailAddress(userDto);
 
             return ResponseEntity.ok().body("User updated successful");
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e.getLocalizedMessage());
         }
+    }
+
+    /**
+     *
+     * @param userDto
+     */
+    private void updateSecretaryMailAddress(UpdateUserDto userDto) {
+        if(userDto.getAttributes() != null) {
+            String role = userDto.getAttributes().get("Role");
+            if(role != null && !role.isBlank() && role.equalsIgnoreCase("SUPERADMIN")) {
+                updateMailConfigEmail(userDto.getEmail());
+            }
+        }
+    }
+
+    /**
+     *
+     * @param email
+     */
+    private void updateMailConfigEmail(String email) {
+        List<MailConfigDto> schedulerConfigServiceAll = schedulerConfigService.getAll();
+        if(schedulerConfigServiceAll != null && !schedulerConfigServiceAll.isEmpty()) {
+            List<MailConfigDto> secretary = schedulerConfigServiceAll.stream().filter(config -> config.isActive()
+                    && config.getAuthorityTitle().equalsIgnoreCase("SECRETARY")).collect(Collectors.toList());
+            if(secretary != null && !secretary.isEmpty()) {
+                secretary.stream().forEach(secConf -> {
+                    List<String> emails = new ArrayList<>();
+                    emails.add(email);
+                    secConf.setAuthorityEmails(emails);
+                    schedulerConfigService.update(secConf);
+                });
+            }
+        }
+
     }
 
     private void updateUserData(UpdateUserDto userDto) {
@@ -781,14 +834,19 @@ public class IntegrationServiceImpl implements IntegrationService {
     }
 
     @Override
-    public User activateUser(JsonNode payload) throws Exception {
+    public ResponseEntity<?> activateUser(JsonNode payload) throws Exception {
         long id = payload.get("id").asLong(-1);
         if (id > 0) {
             Optional<User> user = userRepository.findById(id);
             if (user.isPresent()) {
                 User userDetails = user.get();
+                // if role is admin/secretary/Grievance Admin
+                // then only one user can be active at a time
+                ResponseEntity<String> checkRoleAndActiveCount = checkRoleAndActiveCount(userDetails);
+                if(checkRoleAndActiveCount.getStatusCode().value() != HttpStatus.OK.value()) {
+                    return checkRoleAndActiveCount;
+                }
                 try {
-
                     ObjectNode request = mapper.createObjectNode();
                     ObjectNode root = mapper.createObjectNode();
                     root.put("userName", userDetails.getKeycloakId());
@@ -802,16 +860,46 @@ public class IntegrationServiceImpl implements IntegrationService {
                     if (response.getStatusCode() == HttpStatus.OK) {
                         userDetails.setStatus(1);
                         emailService.sendUserActivationMail(userDetails, true);
-                        return userRepository.save(userDetails);
+                        User data = userRepository.save(userDetails);
+                        return ResponseEntity.ok(data);
                     }
-                    throw new RuntimeException("Error in activating user.");
+                    return ResponseEntity.internalServerError().body("Error in activating user.");
                 } catch (Exception e) {
                     e.printStackTrace();
-                    throw new RuntimeException("Error in activating user.");
+                    return ResponseEntity.internalServerError().body("Error in activating user.");
                 }
             }
         }
-        throw new RuntimeException("Unable to find user details for provided Id.");
+        return ResponseEntity.internalServerError().body("Unable to find user details for provided Id.");
+    }
+
+    private ResponseEntity<String> checkRoleAndActiveCount(User userDetails) {
+        if(userDetails == null || userDetails.getRoles() == null
+                || Arrays.stream(userDetails.getRoles()).count() <= 0) {
+            log.error("Failed to check user role");
+            throw new RuntimeException("Failed to check user role");
+        }
+        List<User> users = userRepository.findAll();
+        AtomicLong matchCount = new AtomicLong();
+        matchCount.set(0);
+        Arrays.stream(userDetails.getRoles()).forEach(role -> {
+            log.debug("matching current role - {}", role);
+            if(role.equalsIgnoreCase("SUPERADMIN")
+                    || role.equalsIgnoreCase("GRIEVANCEADMIN")
+                    || role.equalsIgnoreCase("ADMIN")) {
+                // get existing user for role
+                long count = users.stream().filter(user ->
+                        Arrays.stream(user.getRoles()).anyMatch(userRole -> userRole.equalsIgnoreCase(role))
+                                && user.getStatus() == 1).count();
+                log.debug("Active user count - {}", count);
+                matchCount.set(count);
+            }
+        });
+        log.debug("match count for user role - {}", matchCount.get());
+        if(matchCount.get() > 0) {
+            return ResponseEntity.badRequest().body("Application is designed to have only one active Secretary or Admin or Grievance Nodal.");
+        }
+        return ResponseEntity.ok("Success");
     }
 
     @Override
@@ -967,8 +1055,8 @@ public class IntegrationServiceImpl implements IntegrationService {
                     new HttpEntity<>(null), JsonNode.class);
         } catch (Exception e) {
             log.error("Error while calling external OTP service", e);
-            throw new OtpException("Error reponse from external service", ErrorCode.OTP_004,
-                    "While calling upsmf otp servcie it's thrwoing 400 or 500 response");
+            throw new OtpException("Error response from external service", ErrorCode.OTP_004,
+                    "While calling UPSMF otp service it's throwing 400 or 500 response");
         }
 
         processResponseMessage(response);
@@ -1023,5 +1111,99 @@ public class IntegrationServiceImpl implements IntegrationService {
             return ResponseEntity.ok(Boolean.TRUE);
         }
         return ResponseEntity.ok(Boolean.FALSE);
+    }
+
+    @Override
+    public ResponseEntity<String> filterUsers(JsonNode payload) throws Exception {
+
+        List<UserResponseDto> childNodes = new ArrayList<>();
+        Pageable pageable = PageRequest.of(payload.get("page").asInt(), payload.get("size").asInt(), Sort.by(Sort.Direction.DESC, "id"));
+        Page<User> users = Page.empty();
+
+        if (payload.get("filter") != null && payload.get("filter").size() > 0) {
+            // filter users
+            return getFilteredResponseEntity(payload, childNodes, users);
+        } else if (payload.get("searchKeyword") != null && !payload.get("searchKeyword").asText().isBlank()) {
+            String email = payload.get("searchKeyword").asText();
+            users = userRepository.findByEmailWithPagination(email, pageable);
+        }  else {
+            users = userRepository.findAll(pageable);
+        }
+
+        if (users.hasContent()) {
+            for (User user : users.getContent()) {
+                childNodes.add(createUserResponse(user));
+            }
+        }
+        JsonNode userResponse = mapper.createObjectNode();
+        ((ObjectNode) userResponse).put("count", users.getTotalElements());
+        ArrayNode nodes = mapper.valueToTree(childNodes);
+        ((ObjectNode) userResponse).put("result", nodes);
+        return ResponseEntity.ok(mapper.writeValueAsString(userResponse));
+    }
+
+    private ResponseEntity<String> getFilteredResponseEntity(JsonNode payload, List<UserResponseDto> childNodes, Page<User> users) throws JsonProcessingException {
+        String email = null;
+        if(payload.get("searchKeyword") != null && !payload.get("searchKeyword").asText().isBlank()) {
+            email = payload.get("searchKeyword").asText();
+        }
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, String> filter = mapper.convertValue(payload.get("filter"), new TypeReference<Map<String, String>>(){});
+        List<User> userList = filterUserData(filter, email);
+        JsonNode userResponse = mapper.createObjectNode();
+        if (userList != null) {
+            for (User user : userList) {
+                childNodes.add(createUserResponse(user));
+            }
+            ((ObjectNode) userResponse).put("count", userList.size());
+        }
+        ArrayNode nodes = mapper.valueToTree(childNodes);
+        ((ObjectNode) userResponse).put("result", nodes);
+        return ResponseEntity.ok(mapper.writeValueAsString(userResponse));
+    }
+
+    @Transactional(readOnly = true)
+    private List<User> filterUserData(Map<String, String> map, String searchString) {
+        List<User> users = null;
+        String roleValue = null;
+        String councilId = null;
+        String departmentId = null;
+        if(map.containsKey("role")) {
+            roleValue = map.get("role");
+        }
+        if(map.containsKey("councilId")) {
+            councilId = map.get("councilId");
+        }
+        if(map.containsKey("departmentId")) {
+            departmentId = map.get("departmentId");
+        }
+        if(searchString != null && !searchString.isBlank()) {
+            users = userRepository.findAllByKeyword(searchString);
+        } else {
+            users = userRepository.findAll();
+        }
+        // filter all users by role
+        if(users!= null && !users.isEmpty() && roleValue != null && !roleValue.isBlank()) {
+            String finalRoleValue = roleValue;
+            users = users.stream().filter(x -> Arrays.stream(x.getRoles())
+                    .anyMatch(role -> role.equalsIgnoreCase(finalRoleValue))).collect(Collectors.toList());
+        }
+        // filter on council
+        if(users!= null && !users.isEmpty() && councilId != null && !councilId.isBlank()) {
+            Long finalCouncilId = Long.parseLong(councilId);
+            users = users.stream().filter(x -> x.getUserDepartment() != null && x.getUserDepartment().getCouncilId().longValue() == finalCouncilId.longValue()).collect(Collectors.toList());
+        }
+        // filter on department
+        if(users!= null && !users.isEmpty() && departmentId != null && !departmentId.isBlank()) {
+            Long finalDepartmentId = Long.parseLong(departmentId);
+            users = users.stream().filter(x -> x.getUserDepartment() != null && x.getUserDepartment().getDepartmentId().longValue() == finalDepartmentId.longValue()).collect(Collectors.toList());
+        }
+        return users;
+    }
+
+    @Override
+    public ResponseEntity<String> sendTestMail(String email) throws Exception {
+        emailService.sendTestMail(email);
+        return ResponseEntity.ok("Test mail sent to email - ".concat(email));
     }
 }

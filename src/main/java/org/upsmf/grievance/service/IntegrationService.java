@@ -28,7 +28,7 @@ public interface IntegrationService {
 
     void assignRole(Long userId, Long roleId) throws NotFoundException;
 
-    User activateUser(JsonNode payload) throws Exception;
+    ResponseEntity<?> activateUser(JsonNode payload) throws Exception;
 
     User deactivateUser(JsonNode payload) throws Exception;
 
@@ -41,4 +41,8 @@ public interface IntegrationService {
     List<User> getAllUsersByRole(String role);
 
     ResponseEntity<Boolean> getUserStatusByEmail(String userName);
+
+    ResponseEntity<String> filterUsers(JsonNode payload) throws Exception;
+
+    ResponseEntity<String> sendTestMail(String email) throws Exception;
 }

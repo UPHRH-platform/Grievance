@@ -105,6 +105,9 @@ public class Ticket {
     @Field(name = "rating")
     private Long rating = 0L;
 
+    @Field(name = "feedback_comment")
+    private String feedbackComment;
+
     @Field(name ="is_escalated_to_admin")
     private Boolean escalatedToAdmin;
 

@@ -144,8 +144,12 @@ public class UserController {
     @PostMapping("/activate")
     public ResponseEntity activateUser(@RequestBody JsonNode payload) {
         try {
-            User user = integrationService.activateUser(payload);
-            return createUserResponse(user);
+            ResponseEntity<?> response = integrationService.activateUser(payload);
+            if(response.getStatusCode().value() == HttpStatus.OK.value()) {
+                User user = (User) response.getBody();
+                return createUserResponse(user);
+            }
+            return response;
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("Error in activating user.");
@@ -192,6 +196,27 @@ public class UserController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(e.getLocalizedMessage());
+        }
+    }
+
+    @PostMapping("/filter")
+    public ResponseEntity<String> filterUsers(@RequestBody JsonNode payload) {
+        try {
+            return integrationService.filterUsers(payload);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e.getLocalizedMessage());
+        }
+    }
+
+    @GetMapping("/mail/test/{email}")
+    public ResponseEntity<String> testMail(@PathVariable("email") String email) {
+        try{
+            return integrationService.sendTestMail(email);
+        } catch (Exception e) {
+            log.error("error in firing test mail", e.getLocalizedMessage());
+            return ResponseEntity.internalServerError().body("Error in sending test mail - "
+                    .concat(e.getLocalizedMessage()));
         }
     }
 
