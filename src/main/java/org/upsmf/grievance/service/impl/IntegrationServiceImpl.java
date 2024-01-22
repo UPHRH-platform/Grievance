@@ -861,6 +861,11 @@ public class IntegrationServiceImpl implements IntegrationService {
                         userDetails.setStatus(1);
                         emailService.sendUserActivationMail(userDetails, true);
                         User data = userRepository.save(userDetails);
+                        // update mail config if user role secretary
+                        boolean superadmin = Arrays.stream(data.getRoles()).anyMatch(role -> role.equalsIgnoreCase("SUPERADMIN"));
+                        if(superadmin) {
+                            updateMailConfigEmail(data.getEmail());
+                        }
                         return ResponseEntity.ok(data);
                     }
                     return ResponseEntity.internalServerError().body("Error in activating user.");
@@ -890,7 +895,7 @@ public class IntegrationServiceImpl implements IntegrationService {
                 // get existing user for role
                 long count = users.stream().filter(user ->
                         Arrays.stream(user.getRoles()).anyMatch(userRole -> userRole.equalsIgnoreCase(role))
-                                && user.getStatus() == 1).count();
+                                && user.getStatus() == 1 && user.getId() != userDetails.getId()).count();
                 log.debug("Active user count - {}", count);
                 matchCount.set(count);
             }
