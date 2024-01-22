@@ -49,6 +49,7 @@ import org.upsmf.grievance.util.DateUtil;
 import org.upsmf.grievance.util.ErrorCode;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @Service
@@ -798,8 +799,10 @@ public class IntegrationServiceImpl implements IntegrationService {
             Optional<User> user = userRepository.findById(id);
             if (user.isPresent()) {
                 User userDetails = user.get();
+                // if role is admin/secretary/Grievance Admin
+                // then only one user can be active at a time
+                checkRoleAndActiveCount(userDetails);
                 try {
-
                     ObjectNode request = mapper.createObjectNode();
                     ObjectNode root = mapper.createObjectNode();
                     root.put("userName", userDetails.getKeycloakId());
@@ -823,6 +826,34 @@ public class IntegrationServiceImpl implements IntegrationService {
             }
         }
         throw new RuntimeException("Unable to find user details for provided Id.");
+    }
+
+    private void checkRoleAndActiveCount(User userDetails) {
+        if(userDetails == null || userDetails.getRoles() == null
+                || Arrays.stream(userDetails.getRoles()).count() <= 0) {
+            log.error("Failed to check user role");
+            throw new RuntimeException("Failed to check user role");
+        }
+        List<User> users = userRepository.findAll();
+        AtomicLong matchCount = new AtomicLong();
+        matchCount.set(0);
+        Arrays.stream(userDetails.getRoles()).forEach(role -> {
+            log.debug("matching current role - {}", role);
+            if(role.equalsIgnoreCase("SUPERADMIN")
+                    || role.equalsIgnoreCase("GRIEVANCEADMIN")
+                    || role.equalsIgnoreCase("ADMIN")) {
+                // get existing user for role
+                long count = users.stream().filter(user ->
+                        Arrays.stream(user.getRoles()).anyMatch(userRole -> userRole.equalsIgnoreCase(role))
+                                && user.getStatus() == 1).count();
+                log.debug("Active user count - {}", count);
+                matchCount.set(count);
+            }
+        });
+        log.debug("match count for user role - {}", matchCount.get());
+        if(matchCount.get() > 0) {
+            throw new RuntimeException("Application is designed to have only one active Secretary or Admin or Grievance Nodal.");
+        }
     }
 
     @Override
