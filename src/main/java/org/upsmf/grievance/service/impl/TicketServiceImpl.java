@@ -305,7 +305,7 @@ public class TicketServiceImpl implements TicketService {
                 .updatedDate(currentTimestamp)
                 .lastUpdatedBy("-1")//need to get user details and add id or name
                 .escalated(false)
-                .escalatedDate(Timestamp.valueOf(escalationDateTime))
+                //.escalatedDate(Timestamp.valueOf(escalationDateTime))
                 .escalatedTo("-1")
                 .status(TicketStatus.OPEN)
                 .requestType(ticketRequest.getRequestType())

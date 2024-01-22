@@ -29,10 +29,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.upsmf.grievance.dto.CreateUserDto;
-import org.upsmf.grievance.dto.UpdateUserDto;
-import org.upsmf.grievance.dto.UserCredentials;
-import org.upsmf.grievance.dto.UserResponseDto;
+import org.upsmf.grievance.dto.*;
 import org.upsmf.grievance.enums.Department;
 import org.upsmf.grievance.exception.*;
 import org.upsmf.grievance.exception.runtime.InvalidRequestException;
@@ -49,6 +46,7 @@ import org.upsmf.grievance.util.DateUtil;
 import org.upsmf.grievance.util.ErrorCode;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @Service
@@ -145,6 +143,9 @@ public class IntegrationServiceImpl implements IntegrationService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private SchedulerConfigService schedulerConfigService;
+
     @Override
     public User addUser(User user) {
         return userRepository.save(user);
@@ -218,6 +219,11 @@ public class IntegrationServiceImpl implements IntegrationService {
                     User savedUser = userRepository.save(newUser);
                     // create user role mapping
                     createUserRoleMapping(user, savedUser);
+                    // update mail config if user role secretary
+                    boolean superadmin = Arrays.stream(savedUser.getRoles()).anyMatch(role -> role.equalsIgnoreCase("SUPERADMIN"));
+                    if(superadmin) {
+                        updateMailConfigEmail(savedUser.getEmail());
+                    }
 
                     // send mail with password
 //                    sendCreateUserEmail(savedUser.getEmail(), savedUser.getUsername(), generatePassword);
@@ -541,12 +547,48 @@ public class IntegrationServiceImpl implements IntegrationService {
 
             esTicketUpdateService.updateEsTicketByUserId(userDto);
             esTicketUpdateService.updateJunkByEsTicketByUserId(userDto);
+            // update mail config if user role secretary
+            updateSecretaryMailAddress(userDto);
 
             return ResponseEntity.ok().body("User updated successful");
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e.getLocalizedMessage());
         }
+    }
+
+    /**
+     *
+     * @param userDto
+     */
+    private void updateSecretaryMailAddress(UpdateUserDto userDto) {
+        if(userDto.getAttributes() != null) {
+            String role = userDto.getAttributes().get("Role");
+            if(role != null && !role.isBlank() && role.equalsIgnoreCase("SUPERADMIN")) {
+                updateMailConfigEmail(userDto.getEmail());
+            }
+        }
+    }
+
+    /**
+     *
+     * @param email
+     */
+    private void updateMailConfigEmail(String email) {
+        List<MailConfigDto> schedulerConfigServiceAll = schedulerConfigService.getAll();
+        if(schedulerConfigServiceAll != null && !schedulerConfigServiceAll.isEmpty()) {
+            List<MailConfigDto> secretary = schedulerConfigServiceAll.stream().filter(config -> config.isActive()
+                    && config.getAuthorityTitle().equalsIgnoreCase("SECRETARY")).collect(Collectors.toList());
+            if(secretary != null && !secretary.isEmpty()) {
+                secretary.stream().forEach(secConf -> {
+                    List<String> emails = new ArrayList<>();
+                    emails.add(email);
+                    secConf.setAuthorityEmails(emails);
+                    schedulerConfigService.update(secConf);
+                });
+            }
+        }
+
     }
 
     private void updateUserData(UpdateUserDto userDto) {
@@ -792,14 +834,19 @@ public class IntegrationServiceImpl implements IntegrationService {
     }
 
     @Override
-    public User activateUser(JsonNode payload) throws Exception {
+    public ResponseEntity<?> activateUser(JsonNode payload) throws Exception {
         long id = payload.get("id").asLong(-1);
         if (id > 0) {
             Optional<User> user = userRepository.findById(id);
             if (user.isPresent()) {
                 User userDetails = user.get();
+                // if role is admin/secretary/Grievance Admin
+                // then only one user can be active at a time
+                ResponseEntity<String> checkRoleAndActiveCount = checkRoleAndActiveCount(userDetails);
+                if(checkRoleAndActiveCount.getStatusCode().value() != HttpStatus.OK.value()) {
+                    return checkRoleAndActiveCount;
+                }
                 try {
-
                     ObjectNode request = mapper.createObjectNode();
                     ObjectNode root = mapper.createObjectNode();
                     root.put("userName", userDetails.getKeycloakId());
@@ -813,16 +860,46 @@ public class IntegrationServiceImpl implements IntegrationService {
                     if (response.getStatusCode() == HttpStatus.OK) {
                         userDetails.setStatus(1);
                         emailService.sendUserActivationMail(userDetails, true);
-                        return userRepository.save(userDetails);
+                        User data = userRepository.save(userDetails);
+                        return ResponseEntity.ok(data);
                     }
-                    throw new RuntimeException("Error in activating user.");
+                    return ResponseEntity.internalServerError().body("Error in activating user.");
                 } catch (Exception e) {
                     e.printStackTrace();
-                    throw new RuntimeException("Error in activating user.");
+                    return ResponseEntity.internalServerError().body("Error in activating user.");
                 }
             }
         }
-        throw new RuntimeException("Unable to find user details for provided Id.");
+        return ResponseEntity.internalServerError().body("Unable to find user details for provided Id.");
+    }
+
+    private ResponseEntity<String> checkRoleAndActiveCount(User userDetails) {
+        if(userDetails == null || userDetails.getRoles() == null
+                || Arrays.stream(userDetails.getRoles()).count() <= 0) {
+            log.error("Failed to check user role");
+            throw new RuntimeException("Failed to check user role");
+        }
+        List<User> users = userRepository.findAll();
+        AtomicLong matchCount = new AtomicLong();
+        matchCount.set(0);
+        Arrays.stream(userDetails.getRoles()).forEach(role -> {
+            log.debug("matching current role - {}", role);
+            if(role.equalsIgnoreCase("SUPERADMIN")
+                    || role.equalsIgnoreCase("GRIEVANCEADMIN")
+                    || role.equalsIgnoreCase("ADMIN")) {
+                // get existing user for role
+                long count = users.stream().filter(user ->
+                        Arrays.stream(user.getRoles()).anyMatch(userRole -> userRole.equalsIgnoreCase(role))
+                                && user.getStatus() == 1).count();
+                log.debug("Active user count - {}", count);
+                matchCount.set(count);
+            }
+        });
+        log.debug("match count for user role - {}", matchCount.get());
+        if(matchCount.get() > 0) {
+            return ResponseEntity.badRequest().body("Application is designed to have only one active Secretary or Admin or Grievance Nodal.");
+        }
+        return ResponseEntity.ok("Success");
     }
 
     @Override
