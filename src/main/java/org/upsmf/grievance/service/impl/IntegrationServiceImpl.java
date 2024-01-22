@@ -29,10 +29,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.upsmf.grievance.dto.CreateUserDto;
-import org.upsmf.grievance.dto.UpdateUserDto;
-import org.upsmf.grievance.dto.UserCredentials;
-import org.upsmf.grievance.dto.UserResponseDto;
+import org.upsmf.grievance.dto.*;
 import org.upsmf.grievance.enums.Department;
 import org.upsmf.grievance.exception.*;
 import org.upsmf.grievance.exception.runtime.InvalidRequestException;
@@ -145,6 +142,9 @@ public class IntegrationServiceImpl implements IntegrationService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private SchedulerConfigService schedulerConfigService;
 
     @Override
     public User addUser(User user) {
@@ -542,12 +542,48 @@ public class IntegrationServiceImpl implements IntegrationService {
 
             esTicketUpdateService.updateEsTicketByUserId(userDto);
             esTicketUpdateService.updateJunkByEsTicketByUserId(userDto);
+            // update mail config if user role secretary
+            updateSecretaryMailAddress(userDto);
 
             return ResponseEntity.ok().body("User updated successful");
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e.getLocalizedMessage());
         }
+    }
+
+    /**
+     *
+     * @param userDto
+     */
+    private void updateSecretaryMailAddress(UpdateUserDto userDto) {
+        if(userDto.getAttributes() != null) {
+            String role = userDto.getAttributes().get("Role");
+            if(role != null && !role.isBlank() && role.equalsIgnoreCase("SUPERADMIN")) {
+                updateMailConfigEmail(userDto.getEmail());
+            }
+        }
+    }
+
+    /**
+     *
+     * @param email
+     */
+    private void updateMailConfigEmail(String email) {
+        List<MailConfigDto> schedulerConfigServiceAll = schedulerConfigService.getAll();
+        if(schedulerConfigServiceAll != null && !schedulerConfigServiceAll.isEmpty()) {
+            List<MailConfigDto> secretary = schedulerConfigServiceAll.stream().filter(config -> config.isActive()
+                    && config.getAuthorityTitle().equalsIgnoreCase("SECRETARY")).collect(Collectors.toList());
+            if(secretary != null && !secretary.isEmpty()) {
+                secretary.stream().forEach(secConf -> {
+                    List<String> emails = new ArrayList<>();
+                    emails.add(email);
+                    secConf.setAuthorityEmails(emails);
+                    schedulerConfigService.update(secConf);
+                });
+            }
+        }
+
     }
 
     private void updateUserData(UpdateUserDto userDto) {
