@@ -151,19 +151,39 @@ public class NightlyJobScheduler {
         if(secretaryUserRole != null && secretaryUserRole.size() > 0) {
             secretaryUserRole.stream().forEach(user -> {
                 if(user.getStatus() == 1 && user.getEmail() != null && !user.getEmail().isBlank()) {
-                    long previousDay = LocalDate.now().minusDays(1).toEpochDay();
-                    SearchDateRange dateRange = SearchDateRange.builder().from(previousDay).to(null).build();
-                    List<Ticket> openTicketsByID = searchService.getOpenTicketsByID(null, dateRange);
-                    EmailDetails emailDetails = EmailDetails.builder().recipient(user.getEmail())
-                            .subject(aggregatorSubject).build();
-                    log.info("Details - " + user.getEmail() + " " + "subject - " + aggregatorSubject);
-                    log.info("open tickets - ", openTicketsByID);
-                    // send mail
-                    if (openTicketsByID.size() > 0) {
-                        emailService.sendMailTicketAggregateMailToSecretary(emailDetails, user, openTicketsByID);
-                    }
+                    sendPendingTicketsMail(user);
+                    // send escalated ticket mail
+                    sendEscalatedTicketMail(user);
                 }
             });
+        }
+    }
+
+    private void sendEscalatedTicketMail(User user) {
+        long previousDay = LocalDate.now().minusDays(1).toEpochDay();
+        SearchDateRange dateRange = SearchDateRange.builder().from(previousDay).to(null).build();
+        List<Ticket> openTicketsByID = searchService.getEscalatedTicketsByID(null, dateRange);
+        EmailDetails emailDetails = EmailDetails.builder().recipient(user.getEmail())
+                .subject(aggregatorSubject).build();
+        log.info("Details - " + user.getEmail() + " " + "subject - " + aggregatorSubject);
+        log.info("open tickets - ", openTicketsByID);
+        // send mail
+        if (openTicketsByID.size() > 0) {
+            emailService.sendMailTicketAggregateMailToSecretary(emailDetails, user, openTicketsByID);
+        }
+    }
+
+    private void sendPendingTicketsMail(User user) {
+        long previousDay = LocalDate.now().minusDays(1).toEpochDay();
+        SearchDateRange dateRange = SearchDateRange.builder().from(previousDay).to(null).build();
+        List<Ticket> openTicketsByID = searchService.getOpenTicketsByID(null, dateRange);
+        EmailDetails emailDetails = EmailDetails.builder().recipient(user.getEmail())
+                .subject(aggregatorSubject).build();
+        log.info("Details - " + user.getEmail() + " " + "subject - " + aggregatorSubject);
+        log.info("open tickets - ", openTicketsByID);
+        // send mail
+        if (openTicketsByID.size() > 0) {
+            emailService.sendMailTicketAggregateMailToSecretary(emailDetails, user, openTicketsByID);
         }
     }
 
