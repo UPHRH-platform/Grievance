@@ -144,8 +144,12 @@ public class UserController {
     @PostMapping("/activate")
     public ResponseEntity activateUser(@RequestBody JsonNode payload) {
         try {
-            User user = integrationService.activateUser(payload);
-            return createUserResponse(user);
+            ResponseEntity<?> response = integrationService.activateUser(payload);
+            if(response.getStatusCode().value() == HttpStatus.OK.value()) {
+                User user = (User) response.getBody();
+                return createUserResponse(user);
+            }
+            return response;
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("Error in activating user.");

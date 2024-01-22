@@ -793,7 +793,7 @@ public class IntegrationServiceImpl implements IntegrationService {
     }
 
     @Override
-    public User activateUser(JsonNode payload) throws Exception {
+    public ResponseEntity<?> activateUser(JsonNode payload) throws Exception {
         long id = payload.get("id").asLong(-1);
         if (id > 0) {
             Optional<User> user = userRepository.findById(id);
@@ -801,7 +801,10 @@ public class IntegrationServiceImpl implements IntegrationService {
                 User userDetails = user.get();
                 // if role is admin/secretary/Grievance Admin
                 // then only one user can be active at a time
-                checkRoleAndActiveCount(userDetails);
+                ResponseEntity<String> checkRoleAndActiveCount = checkRoleAndActiveCount(userDetails);
+                if(checkRoleAndActiveCount.getStatusCode().value() != HttpStatus.OK.value()) {
+                    return checkRoleAndActiveCount;
+                }
                 try {
                     ObjectNode request = mapper.createObjectNode();
                     ObjectNode root = mapper.createObjectNode();
@@ -816,19 +819,20 @@ public class IntegrationServiceImpl implements IntegrationService {
                     if (response.getStatusCode() == HttpStatus.OK) {
                         userDetails.setStatus(1);
                         emailService.sendUserActivationMail(userDetails, true);
-                        return userRepository.save(userDetails);
+                        User data = userRepository.save(userDetails);
+                        return ResponseEntity.ok(data);
                     }
-                    throw new RuntimeException("Error in activating user.");
+                    return ResponseEntity.internalServerError().body("Error in activating user.");
                 } catch (Exception e) {
                     e.printStackTrace();
-                    throw new RuntimeException("Error in activating user.");
+                    return ResponseEntity.internalServerError().body("Error in activating user.");
                 }
             }
         }
-        throw new RuntimeException("Unable to find user details for provided Id.");
+        return ResponseEntity.internalServerError().body("Unable to find user details for provided Id.");
     }
 
-    private void checkRoleAndActiveCount(User userDetails) {
+    private ResponseEntity<String> checkRoleAndActiveCount(User userDetails) {
         if(userDetails == null || userDetails.getRoles() == null
                 || Arrays.stream(userDetails.getRoles()).count() <= 0) {
             log.error("Failed to check user role");
@@ -852,8 +856,9 @@ public class IntegrationServiceImpl implements IntegrationService {
         });
         log.debug("match count for user role - {}", matchCount.get());
         if(matchCount.get() > 0) {
-            throw new RuntimeException("Application is designed to have only one active Secretary or Admin or Grievance Nodal.");
+            return ResponseEntity.badRequest().body("Application is designed to have only one active Secretary or Admin or Grievance Nodal.");
         }
+        return ResponseEntity.ok("Success");
     }
 
     @Override
