@@ -1,10 +1,7 @@
 package org.upsmf.grievance.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.upsmf.grievance.model.AssigneeTicketAttachment;
-import org.upsmf.grievance.model.EmailDetails;
-import org.upsmf.grievance.model.Ticket;
-import org.upsmf.grievance.model.User;
+import org.upsmf.grievance.model.*;
 
 import java.util.List;
 
@@ -12,11 +9,13 @@ public interface EmailService {
 
     // Method
     // To send a simple email
-    void sendCreateTicketMail(EmailDetails details, Ticket ticket);
+
+    void sendCreateTicketMail(EmailDetails details, Ticket ticket, List<RaiserTicketAttachment> raiserTicketAttachments);
 
     void sendUpdateTicketMail(EmailDetails details, Ticket ticket);
 
-    void sendClosedTicketMail(EmailDetails details, Ticket ticket, String comment, List<AssigneeTicketAttachment> attachments, String feedbackURL);
+    void sendClosedTicketMail(EmailDetails details, Ticket ticket, String comment, List<AssigneeTicketAttachment> attachments, String feedbackURL, List<RaiserTicketAttachment> raiserTicketAttachments);
+
     void sendJunkMail(EmailDetails details, Ticket ticket, String comment, List<AssigneeTicketAttachment> attachments, String feedbackURL);
     void sendSimpleMail(EmailDetails details);
 
@@ -49,4 +48,8 @@ public interface EmailService {
     void sendUnjunkMail(EmailDetails details, Ticket ticket);
 
     void sendEscalationMailToGrievanceNodal(EmailDetails details, Ticket ticket);
+
+    void sendCreateTicketOTPMail(String email, String otp, String recipientName, String subject, int otpExpirationMinutes);
+
+    void sendTestMail(String email);
 }

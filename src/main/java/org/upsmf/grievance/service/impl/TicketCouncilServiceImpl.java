@@ -3,29 +3,23 @@ package org.upsmf.grievance.service.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.upsmf.grievance.dto.AdminTextSearchDto;
 import org.upsmf.grievance.dto.TicketCouncilDto;
 import org.upsmf.grievance.dto.TicketDepartmentDto;
-import org.upsmf.grievance.dto.TicketUserTypeDto;
 import org.upsmf.grievance.exception.CustomException;
 import org.upsmf.grievance.exception.DataUnavailabilityException;
 import org.upsmf.grievance.exception.InvalidDataException;
 import org.upsmf.grievance.model.TicketCouncil;
-import org.upsmf.grievance.model.TicketDepartment;
-import org.upsmf.grievance.model.TicketUserType;
+import org.upsmf.grievance.model.User;
+import org.upsmf.grievance.model.UserDepartment;
 import org.upsmf.grievance.repository.TicketCouncilRepository;
+import org.upsmf.grievance.repository.UserDepartmentRepository;
+import org.upsmf.grievance.repository.UserRepository;
 import org.upsmf.grievance.service.TicketCouncilService;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +29,8 @@ public class TicketCouncilServiceImpl implements TicketCouncilService {
     @Autowired
     private TicketCouncilRepository ticketCouncilRepository;
 
+    @Autowired
+    private UserRepository userRepository;
     /**
      * @param ticketCouncilDto
      */
@@ -102,6 +98,26 @@ public class TicketCouncilServiceImpl implements TicketCouncilService {
 
         Iterable<TicketCouncil> ticketCouncilIterable = ticketCouncilRepository.findAll();
         ticketCouncilIterable.forEach(ticketCouncilList::add);
+
+        // get all active users
+        List<User> allActiveUsers = userRepository.findAllActiveUsers();
+        if(allActiveUsers == null || allActiveUsers.isEmpty()) {
+            Collections.emptyList();
+        }
+        List<User> allActiveNodals = allActiveUsers.stream().filter(user -> Arrays.stream(user.getRoles())
+                        .anyMatch(role -> role.equalsIgnoreCase("NODALOFFICER")))
+                .collect(Collectors.toList());
+        if(allActiveNodals != null && !allActiveNodals.isEmpty()) {
+            ticketCouncilList.stream().forEach(ticketCouncil -> {
+                allActiveNodals.stream().forEach(x -> {ticketCouncil.getTicketDepartments().stream().forEach(dept -> {
+                        if (dept.getTicketDepartmentName().equals(x.getUserDepartment().getDepartmentName())
+                                && ticketCouncil.getId().longValue() == x.getUserDepartment().getCouncilId().longValue()) {
+                            dept.setUserCount(dept.getUserCount() + 1);
+                        }
+                    });
+                });
+            });
+        }
 
         if (!ticketCouncilList.isEmpty()) {
             return ticketCouncilList.stream()

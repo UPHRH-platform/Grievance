@@ -58,18 +58,21 @@ public class EmailServiceImpl implements EmailService {
     @Value("${site.url}")
     private String siteUrl;
 
+    @Value("${mail.sender}")
+    private static String mailSender;
+
     @Autowired
     private TicketDepartmentRepository ticketDepartmentRepository;
 
     @Override
-    public void sendCreateTicketMail(EmailDetails details, Ticket ticket) {
+    public void sendCreateTicketMail(EmailDetails details, Ticket ticket, List<RaiserTicketAttachment> raiserTicketAttachments) {
 //        getUserByDepartmentId(ticket.getTicketDepartment().getId());
 
         // sending mail activity in seperate thread
         Runnable mailThread = () -> {   // lambda expression
-            sendMailToRaiser(details, ticket);
+            sendMailToRaiser(details, ticket, raiserTicketAttachments);
             sendMailToAdmin(details, ticket);
-            sendMailToNodalOfficer(details, ticket);
+            //sendMailToNodalOfficer(details, ticket);
         };
         new Thread(mailThread).start();
     }
@@ -84,14 +87,15 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendClosedTicketMail(EmailDetails details, Ticket ticket, String comment, List<AssigneeTicketAttachment> attachments, String feedbackURL) {
+    public void sendClosedTicketMail(EmailDetails details, Ticket ticket, String comment, List<AssigneeTicketAttachment> attachments, String feedbackURL, List<RaiserTicketAttachment> raiserTicketAttachments) {
         // Try block to check for exceptions
         Runnable mailThread = () -> {   // lambda expression
-            sendFeedbackMailToRaiser(details, ticket, comment, attachments, feedbackURL);
+            sendFeedbackMailToRaiser(details, ticket, comment, attachments, feedbackURL, raiserTicketAttachments);
         };
         new Thread(mailThread).start();
 
     }
+
     @Override
     public void sendJunkMail(EmailDetails details, Ticket ticket, String comment, List<AssigneeTicketAttachment> attachments, String feedbackURL) {
         // Try block to check for exceptions
@@ -101,9 +105,10 @@ public class EmailServiceImpl implements EmailService {
         new Thread(mailThread).start();
 
     }
+
     private void sendFeedbackMailToRaiser(EmailDetails details, Ticket ticket,
-                                         String comment, List<AssigneeTicketAttachment> attachments,
-                                         String feedbackUrl) {
+                                          String comment, List<AssigneeTicketAttachment> attachments,
+                                          String feedbackUrl, List<RaiserTicketAttachment> raiserTicketAttachments) {
         try {
             MimeMessagePreparator preparator = new MimeMessagePreparator() {
                 public void prepare(MimeMessage mimeMessage) throws Exception {
@@ -125,8 +130,10 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("comment", comment);
                     velocityContext.put("url", feedbackUrl);
                     velocityContext.put("docLinks", attachments);
+                    velocityContext.put("description", ticket.getDescription());
+                    velocityContext.put("originalDocLinks", raiserTicketAttachments);
                     // signature
-                    createCommonMailSignature(velocityContext);
+                    createCommonMailSignature(velocityContext, message);
                     // merge mail body
                     StringWriter stringWriter = new StringWriter();
                     velocityEngine.mergeTemplate("templates/raiser_feedback.vm", "UTF-8", velocityContext, stringWriter);
@@ -143,6 +150,7 @@ public class EmailServiceImpl implements EmailService {
             log.error("Error while Sending Mail", e);
         }
     }
+
     private void sendJunkResponseToRaiser(EmailDetails details, Ticket ticket,
                                           String comment, List<AssigneeTicketAttachment> attachments,
                                           String feedbackUrl) {
@@ -165,14 +173,14 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                     velocityContext.put("department", departmentName);
                     velocityContext.put("comment", comment);
-                    velocityContext.put("support_email_address","upmedicalfaculty@upsmfac.org");
-                    velocityContext.put("support_phone_number","Phone: (0522) 2238846, 2235964, 2235965, 3302100");
+                    velocityContext.put("support_email_address", "upmedicalfaculty@upsmfac.org");
+                    velocityContext.put("support_phone_number", "Phone: (0522) 2238846, 2235964, 2235965, 3302100");
                     velocityContext.put("url", feedbackUrl);
                     velocityContext.put("junk_by", ticket.isJunk());
                     velocityContext.put("Junk_by_reason", ticket.getJunkByReason());
 
                     // signature
-                    createCommonMailSignature(velocityContext);
+                    createCommonMailSignature(velocityContext, message);
                     // merge mail body
                     StringWriter stringWriter = new StringWriter();
                     velocityEngine.mergeTemplate("templates/raiser_junk_ticket.vm", "UTF-8", velocityContext, stringWriter);
@@ -207,7 +215,7 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("other_by", ticket.getOther());
                     velocityContext.put("other_by_reason", ticket.getOtherByReason());
                     // signature
-                    createCommonMailSignature(velocityContext);
+                    createCommonMailSignature(velocityContext, message);
                     // merge mail body
                     StringWriter stringWriter = new StringWriter();
                     velocityEngine.mergeTemplate("templates/raiser_update_ticket.vm", "UTF-8", velocityContext, stringWriter);
@@ -230,7 +238,7 @@ public class EmailServiceImpl implements EmailService {
         try {
 
             List<User> users = getUsersByAssignedId(ticket.getAssignedToId());
-            if(users == null || users.isEmpty()) {
+            if (users == null || users.isEmpty()) {
                 return;
             }
             users.stream().forEach(x -> {
@@ -258,7 +266,7 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("status", ticket.getStatus().name());
                         velocityContext.put("site_url", siteUrl);
                         // signature
-                        createCommonMailSignature(velocityContext);
+                        createCommonMailSignature(velocityContext, message);
                         // merge mail body
                         StringWriter stringWriter = new StringWriter();
                         velocityEngine.mergeTemplate("templates/nodal_create_ticket.vm", "UTF-8", velocityContext, stringWriter);
@@ -362,11 +370,11 @@ public class EmailServiceImpl implements EmailService {
     private void sendMailToAdmin(EmailDetails details, Ticket ticket) {
         try {
             List<User> users = getUsersByAssignedId(String.valueOf(-1));
-            if(users == null || users.isEmpty()) {
+            if (users == null || users.isEmpty()) {
                 return;
             }
             users.stream().forEach(x -> {
-                 MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                MimeMessagePreparator preparator = new MimeMessagePreparator() {
                     public void prepare(MimeMessage mimeMessage) throws Exception {
                         MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
                         message.setTo(x.getEmail());
@@ -381,7 +389,7 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("ticket_description", ticket.getDescription());
                         velocityContext.put("status", ticket.getStatus().name());
                         // signature
-                        createCommonMailSignature(velocityContext);
+                        createCommonMailSignature(velocityContext, message);
                         // merge mail body
                         StringWriter stringWriter = new StringWriter();
                         velocityEngine.mergeTemplate("templates/admin_create_ticket.vm", "UTF-8", velocityContext, stringWriter);
@@ -419,7 +427,9 @@ public class EmailServiceImpl implements EmailService {
         return Collections.emptyList();
     }
 
-    /** ununsed method
+    /**
+     * ununsed method
+     *
      * @param details
      * @param ticket
      */
@@ -427,11 +437,11 @@ public class EmailServiceImpl implements EmailService {
     public void sendMailToGrievanceNodal(EmailDetails details, Ticket ticket) {
         try {
             List<User> users = findGrivanceNodal();
-            if(users == null || users.isEmpty()) {
+            if (users == null || users.isEmpty()) {
                 return;
             }
             users.stream().forEach(x -> {
-                 MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                MimeMessagePreparator preparator = new MimeMessagePreparator() {
                     public void prepare(MimeMessage mimeMessage) throws Exception {
                         MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
                         message.setTo(x.getEmail());
@@ -448,7 +458,7 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("other_by", ticket.getOther());
                         velocityContext.put("other_by_reason", ticket.getOtherByReason());
                         // signature
-                        createCommonMailSignature(velocityContext);
+                        createCommonMailSignature(velocityContext, message);
                         // merge mail body
                         StringWriter stringWriter = new StringWriter();
                         velocityEngine.mergeTemplate("templates/admin_create_ticket.vm", "UTF-8", velocityContext, stringWriter);
@@ -467,16 +477,18 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
-    private static void createCommonMailSignature(VelocityContext velocityContext) {
+    private static void createCommonMailSignature(VelocityContext velocityContext, MimeMessageHelper message) throws MessagingException {
         velocityContext.put("signature_name", "U.P. State Medical Faculty");
         velocityContext.put("address", "Address: 5, Sarvpalli, Mall Avenue Road,  Lucknow - 226001 (U.P.) India");
         velocityContext.put("phone", "Phone: (0522) 2238846, 2235964, 2235965, 3302100");
         velocityContext.put("mobile", "Mobile : +91-8400955546 / +91-9151024463");
         velocityContext.put("fax", "Fax : (0522) 2236600");
         velocityContext.put("email", "Email:  upmedicalfaculty@upsmfac.org");
+        // setting temporary
+        //message.setFrom(mailSender);
     }
 
-    private void sendMailToRaiser(EmailDetails details, Ticket ticket) {
+    private void sendMailToRaiser(EmailDetails details, Ticket ticket, List<RaiserTicketAttachment> raiserTicketAttachments) {
         try {
             MimeMessagePreparator preparator = new MimeMessagePreparator() {
                 public void prepare(MimeMessage mimeMessage) throws Exception {
@@ -487,9 +499,13 @@ public class EmailServiceImpl implements EmailService {
                     VelocityContext velocityContext = new VelocityContext();
                     velocityContext.put("first_name", ticket.getFirstName());
                     velocityContext.put("id", ticket.getId());
+                    velocityContext.put("description", ticket.getDescription());
+                    velocityContext.put("department", ticket.getTicketDepartment().getTicketDepartmentName());
+                    velocityContext.put("council", ticket.getTicketCouncil().getTicketCouncilName());
                     velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
+                    velocityContext.put("docLinks", raiserTicketAttachments);
                     // signature
-                    createCommonMailSignature(velocityContext);
+                    createCommonMailSignature(velocityContext, message);
                     // merge mail body
                     StringWriter stringWriter = new StringWriter();
                     velocityEngine.mergeTemplate("templates/raiser-create-ticket.vm", "UTF-8", velocityContext, stringWriter);
@@ -510,8 +526,7 @@ public class EmailServiceImpl implements EmailService {
     // Method 1
     // To send a simple email
     @Override
-    public void sendSimpleMail(EmailDetails details)
-    {
+    public void sendSimpleMail(EmailDetails details) {
         // Try block to check for exceptions
         try {
             // Creating a simple mail message
@@ -534,8 +549,7 @@ public class EmailServiceImpl implements EmailService {
     // Method 2
     // To send an email with attachment
     @Override
-    public void sendMailWithAttachment(EmailDetails details)
-    {
+    public void sendMailWithAttachment(EmailDetails details) {
         // Creating a mime message
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
         MimeMessageHelper mimeMessageHelper;
@@ -577,7 +591,7 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("junk", assessmentMatrix.get("Is Junk").numberValue());
                     velocityContext.put("total", assessmentMatrix.get("Total").numberValue());
                     // signature
-                    createCommonMailSignature(velocityContext);
+                    createCommonMailSignature(velocityContext, message);
                     // merge mail body
                     StringWriter stringWriter = new StringWriter();
                     velocityEngine.mergeTemplate("templates/biweekly_report.vm", "UTF-8", velocityContext, stringWriter);
@@ -596,7 +610,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendMailToNodalOfficers(EmailDetails details, Ticket ticket){
+    public void sendMailToNodalOfficers(EmailDetails details, Ticket ticket) {
         log.info("Entering sendMailToNodalOfficers method");
         Runnable mailThread = () -> {
             log.info("Inside mailThread lambda");// lambda expression
@@ -609,7 +623,7 @@ public class EmailServiceImpl implements EmailService {
         try {
 
             List<User> users = getUsersByAssignedId(ticket.getAssignedToId());
-            if(users.isEmpty()) {
+            if (users.isEmpty()) {
                 return;
             }
             users.stream().forEach(user -> {
@@ -638,7 +652,7 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("nudged_count", ticket.getReminderCounter());
                         velocityContext.put("site_url", siteUrl);
                         // signature
-                        createCommonMailSignature(velocityContext);
+                        createCommonMailSignature(velocityContext, message);
                         // merge mail body
                         StringWriter stringWriter = new StringWriter();
                         velocityEngine.mergeTemplate("templates/nodal_nudge_ticket.vm", "UTF-8", velocityContext, stringWriter);
@@ -679,7 +693,7 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("first_name", ticket.getFirstName());
                     velocityContext.put("id", ticket.getId());
                     // signature
-                    createCommonMailSignature(velocityContext);
+                    createCommonMailSignature(velocityContext, message);
                     // merge mail body
                     StringWriter stringWriter = new StringWriter();
                     velocityEngine.mergeTemplate("templates/raiser_escalation_ticket.vm", "UTF-8", velocityContext, stringWriter);
@@ -696,6 +710,7 @@ public class EmailServiceImpl implements EmailService {
             log.error("Error while Sending Mail", e);
         }
     }
+
     public void sendMailToNodalForEscalatedTicket(EmailDetails details, Ticket ticket) {
         try {
             List<User> users = getUsersByAssignedId(ticket.getAssignedToId());
@@ -715,7 +730,7 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                         velocityContext.put("id", ticket.getId());
                         // signature
-                        createCommonMailSignature(velocityContext);
+                        createCommonMailSignature(velocityContext, message);
                         // merge mail body
                         StringWriter stringWriter = new StringWriter();
                         velocityEngine.mergeTemplate("templates/nodal_escaltion_ticket.vm", "UTF-8", velocityContext, stringWriter);
@@ -755,7 +770,7 @@ public class EmailServiceImpl implements EmailService {
                     velocityContext.put("site_url", siteUrl);
                     velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                     // signature
-                    createCommonMailSignature(velocityContext);
+                    createCommonMailSignature(velocityContext, message);
                     // merge mail body
                     StringWriter stringWriter = new StringWriter();
                     velocityEngine.mergeTemplate("templates/nodal_create_ticket.vm", "UTF-8", velocityContext, stringWriter);
@@ -778,7 +793,7 @@ public class EmailServiceImpl implements EmailService {
         try {
             List<User> users = findGrivanceNodal();
 
-            if(users == null || users.isEmpty()) {
+            if (users == null || users.isEmpty()) {
                 return;
             }
 
@@ -808,7 +823,7 @@ public class EmailServiceImpl implements EmailService {
                         velocityContext.put("nudged_count", ticket.getReminderCounter());
                         velocityContext.put("site_url", siteUrl);
                         // signature
-                        createCommonMailSignature(velocityContext);
+                        createCommonMailSignature(velocityContext, message);
                         // merge mail body
                         StringWriter stringWriter = new StringWriter();
                         velocityEngine.mergeTemplate("templates/nodal_admin_nudge_ticket.vm", "UTF-8", velocityContext, stringWriter);
@@ -830,7 +845,7 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendMailTicketAggregateMailToNodalOfficer(EmailDetails details, User user,
-                  List<org.upsmf.grievance.model.es.Ticket> openTicketsByID) {
+                                                          List<org.upsmf.grievance.model.es.Ticket> openTicketsByID) {
         try {
             prepareAndSendMailToUser(details, user, openTicketsByID);
         }
@@ -842,21 +857,21 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendMailTicketAggregateMailToSecretary(EmailDetails details, User user,
-                  List<org.upsmf.grievance.model.es.Ticket> openTicketsByID) {
+                                                       List<org.upsmf.grievance.model.es.Ticket> openTicketsByID) {
         try {
-            if(openTicketsByID == null || openTicketsByID.isEmpty()){
+            if (openTicketsByID == null || openTicketsByID.isEmpty()) {
                 log.error("No tickets found to send out mail");
             }
             openTicketsByID.stream().forEach(ticket -> {
-                if(ticket.getAssignedToId() != null){
-                    if(ticket.getAssignedToId().equalsIgnoreCase("-1")) {
+                if (ticket.getAssignedToId() != null) {
+                    if (ticket.getAssignedToId().equalsIgnoreCase("-1")) {
                         List<User> grievanceNodal = findGrivanceNodal();
-                        if(grievanceNodal == null || grievanceNodal.isEmpty()) {
+                        if (grievanceNodal == null || grievanceNodal.isEmpty()) {
                             ticket.setAssignedToName("NA");
                         }
                         Optional<User> optionalUser = grievanceNodal.stream().findFirst();
-                        if(optionalUser.isPresent()){
-                            ticket.setAssignedToName(optionalUser.get().getFirstName()+" "+optionalUser.get().getLastname());
+                        if (optionalUser.isPresent()) {
+                            ticket.setAssignedToName(optionalUser.get().getFirstName() + " " + optionalUser.get().getLastname());
                         } else {
                             ticket.setAssignedToName("NA");
                         }
@@ -883,10 +898,10 @@ public class EmailServiceImpl implements EmailService {
 
                 VelocityContext velocityContext = new VelocityContext();
                 velocityContext.put("first_name", user.getFirstName());
-                velocityContext.put("tickets", openTicketsByID.size() > 0? openTicketsByID : null);
+                velocityContext.put("tickets", openTicketsByID.size() > 0 ? openTicketsByID : null);
                 log.debug("openTicket size - {}", openTicketsByID.size());
                 // signature
-                createCommonMailSignature(velocityContext);
+                createCommonMailSignature(velocityContext, message);
                 // merge mail body
                 StringWriter stringWriter = new StringWriter();
                 velocityEngine.mergeTemplate("templates/nodal_officer_pending_ticket_mail.vm", "UTF-8", velocityContext, stringWriter);
@@ -915,7 +930,7 @@ public class EmailServiceImpl implements EmailService {
                     VelocityContext velocityContext = new VelocityContext();
                     velocityContext.put("first_name", user.getFirstName());
                     // signature
-                    createCommonMailSignature(velocityContext);
+                    createCommonMailSignature(velocityContext, message);
                     // merge mail body
                     StringWriter stringWriter = new StringWriter();
                     if (active) {
@@ -935,7 +950,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendUserCreationMail(User user,String password) {
+    public void sendUserCreationMail(User user, String password) {
         try {
             MimeMessagePreparator preparator = new MimeMessagePreparator() {
                 public void prepare(MimeMessage mimeMessage) throws Exception {
@@ -948,14 +963,15 @@ public class EmailServiceImpl implements EmailService {
                     VelocityContext velocityContext = new VelocityContext();
                     velocityContext.put("first_name", user.getFirstName());
                     velocityContext.put("role", null);
-                    if(userRoleOpt.isPresent()){
+                    if (userRoleOpt.isPresent()) {
                         String role = getRoleStringByRole(userRoleOpt.get());
                         velocityContext.put("role", role);
                     }
                     velocityContext.put("username", user.getUsername());
                     velocityContext.put("password", password);
+                    velocityContext.put("url", siteUrl);
                     // signature
-                    createCommonMailSignature(velocityContext);
+                    createCommonMailSignature(velocityContext, message);
                     // merge mail body
                     StringWriter stringWriter = new StringWriter();
 
@@ -975,16 +991,16 @@ public class EmailServiceImpl implements EmailService {
     private String getRoleStringByRole(String role) {
         String userRole = null;
         switch (role) {
-            case "SUPERADMIN" :
+            case "SUPERADMIN":
                 userRole = "Secretary";
                 break;
-            case "NODALOFFICER" :
+            case "NODALOFFICER":
                 userRole = "Nodal Officer";
                 break;
-            case "GRIEVANCEADMIN" :
+            case "GRIEVANCEADMIN":
                 userRole = "Grievance Nodal";
                 break;
-            case "ADMIN" :
+            case "ADMIN":
                 userRole = "Admin";
                 break;
             default:
@@ -994,7 +1010,9 @@ public class EmailServiceImpl implements EmailService {
         return userRole;
     }
 
-    /** ununsed method
+    /**
+     * ununsed method
+     *
      * @param details
      * @param ticket
      */
@@ -1002,7 +1020,7 @@ public class EmailServiceImpl implements EmailService {
     public void sendEscalationMailToGrievanceNodal(EmailDetails details, Ticket ticket) {
         try {
             List<User> users = findGrivanceNodal();
-            if(users == null || users.isEmpty()) {
+            if (users == null || users.isEmpty()) {
                 return;
             }
             users.stream().forEach(x -> {
@@ -1011,12 +1029,13 @@ public class EmailServiceImpl implements EmailService {
                         MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
                         message.setTo(x.getEmail());
                         message.setSubject(details.getSubject());
+
                         VelocityContext velocityContext = new VelocityContext();
                         velocityContext.put("id", ticket.getId());
                         velocityContext.put("created_date", DateUtil.getFormattedDateInString(ticket.getCreatedDate()));
                         velocityContext.put("status", ticket.getStatus().name());
                         // signature
-                        createCommonMailSignature(velocityContext);
+                        createCommonMailSignature(velocityContext, message);
                         // merge mail body
                         StringWriter stringWriter = new StringWriter();
                         velocityEngine.mergeTemplate("templates/nodal_admin_escalation_ticket.vm", "UTF-8", velocityContext, stringWriter);
@@ -1032,6 +1051,83 @@ public class EmailServiceImpl implements EmailService {
         // Catch block to handle the exceptions
         catch (Exception e) {
             log.error("Error while Sending Mail", e);
+        }
+    }
+
+    @Override
+    public void sendCreateTicketOTPMail(String email, String otp, String recipientName, String subject, int otpExpirationMinutes) {
+        try {
+            if(otpExpirationMinutes <= 0) {
+                otpExpirationMinutes = 10;
+            }
+            if(recipientName == null || recipientName.isBlank()) {
+                recipientName = "User";
+            }
+            int finalOtpExpirationMinutes = otpExpirationMinutes;
+            String finalRecipientName = recipientName.trim();
+            MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                public void prepare(MimeMessage mimeMessage) throws Exception {
+                    MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+                    message.setTo(email);
+                    message.setSubject(subject);
+
+                    VelocityContext velocityContext = new VelocityContext();
+                    velocityContext.put("name", finalRecipientName);
+                    velocityContext.put("otp", otp);
+                    velocityContext.put("expiry", finalOtpExpirationMinutes);
+                    // signature
+                    createCommonMailSignature(velocityContext, message);
+                    // merge mail body
+                    StringWriter stringWriter = new StringWriter();
+                    velocityEngine.mergeTemplate("templates/raiser_otp_create_ticket_mail.vm", "UTF-8", velocityContext, stringWriter);
+
+                    message.setText(stringWriter.toString(), true);
+                }
+            };
+            // Sending the mail
+            javaMailSender.send(preparator);
+            log.info("create ticket OTP mail sent successfully...");
+        }
+        // Catch block to handle the exceptions
+        catch (Exception e) {
+            log.error("Error while Sending Mail create ticket OTP mail", e);
+        }
+    }
+
+    @Override
+    public void sendTestMail(String email) {
+        try {
+            MimeMessagePreparator preparator = new MimeMessagePreparator() {
+                public void prepare(MimeMessage mimeMessage) throws Exception {
+                    MimeMessageHelper message = new MimeMessageHelper(mimeMessage);
+                    message.setTo(email);
+                    message.setSubject("Test Mail");
+
+                    VelocityContext velocityContext = new VelocityContext();
+                    velocityContext.put("first_name", "User");
+                    velocityContext.put("id", -1);
+                    velocityContext.put("created_date", DateUtil.getCurrentDate());
+                    velocityContext.put("department", "Test");
+                    velocityContext.put("comment", "Test comment");
+                    velocityContext.put("url", "http://uphrh.in");
+
+                    // signature
+                    createCommonMailSignature(velocityContext, message);
+                    // merge mail body
+                    StringWriter stringWriter = new StringWriter();
+                    velocityEngine.mergeTemplate("templates/raiser_feedback.vm", "UTF-8", velocityContext, stringWriter);
+
+                    message.setText(stringWriter.toString(), true);
+                }
+            };
+            // Sending the mail
+            javaMailSender.send(preparator);
+            log.info("create ticket mail Sent Successfully...");
+        }
+        // Catch block to handle the exceptions
+        catch (Exception e) {
+            log.error("Error while Sending Mail", e);
+            throw new RuntimeException("Error in sending test mail. Reason - ".concat(e.getLocalizedMessage()));
         }
     }
 }
