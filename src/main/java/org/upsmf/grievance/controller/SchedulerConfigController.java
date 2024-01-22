@@ -49,7 +49,7 @@ public class SchedulerConfigController {
             throw new MailConfigException(e.getMessage(), ErrorCode.MAIL_002, "Error in updating configuration");
         } catch (Exception e) {
             log.error("Error while creating config", e);
-            return ResponseEntity.internalServerError().body(e.getLocalizedMessage());
+            throw new MailConfigException(e.getMessage(), ErrorCode.CONFIG_002, e.getLocalizedMessage());
         }
     }
 

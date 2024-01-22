@@ -20,4 +20,6 @@ public interface SearchService {
     List<Ticket> getOpenTicketsByID(Long id);
 
     List<Ticket> getOpenTicketsByID(Long id, SearchDateRange dateRange);
+
+    List<Ticket> getEscalatedTicketsByID(Long id, SearchDateRange dateRange);
 }
