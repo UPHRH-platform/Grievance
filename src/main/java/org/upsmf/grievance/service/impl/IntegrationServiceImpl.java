@@ -219,6 +219,11 @@ public class IntegrationServiceImpl implements IntegrationService {
                     User savedUser = userRepository.save(newUser);
                     // create user role mapping
                     createUserRoleMapping(user, savedUser);
+                    // update mail config if user role secretary
+                    boolean superadmin = Arrays.stream(savedUser.getRoles()).anyMatch(role -> role.equalsIgnoreCase("SUPERADMIN"));
+                    if(superadmin) {
+                        updateMailConfigEmail(savedUser.getEmail());
+                    }
 
                     // send mail with password
 //                    sendCreateUserEmail(savedUser.getEmail(), savedUser.getUsername(), generatePassword);
