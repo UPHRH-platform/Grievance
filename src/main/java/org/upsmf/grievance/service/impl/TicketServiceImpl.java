@@ -485,8 +485,7 @@ public class TicketServiceImpl implements TicketService {
                 || oldStatusValue.name().equalsIgnoreCase("CLOSED")) ) {
             // sending reopen ticket mail to nodal officer
             log.info("ticket is getting reopened we will reset escalation date time - {}", ticket.getId());
-            LocalDateTime escalationDateTime = getEscalationDateFromMailConfig();
-            ticket.setEscalatedDate(Timestamp.valueOf(escalationDateTime));
+            ticket.setEscalatedDate(null);
         }
         // update ticket in DB
         ticketRepository.save(ticket);
