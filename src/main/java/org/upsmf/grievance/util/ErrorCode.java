@@ -18,7 +18,9 @@ public enum ErrorCode {
     MAIL_002("Failed to update configuration."),
     MAIL_003("Failed to fetch configurations."),
     MAIL_004("Failed to activate configuration."),
-    MAIL_005("Failed to deactivate configuration.");
+    MAIL_005("Failed to deactivate configuration."),
+    CONFIG_001("Invalid Request"),
+    CONFIG_002("Error in updating request");
 
     private String description;
 

@@ -75,6 +75,10 @@ public class SchedulerConfigServiceImpl implements SchedulerConfigService {
         Optional<MailConfig> configById = mailConfigRepository.findById(mailConfigDto.getId());
         if(configById.isPresent()) {
             MailConfig existingConfig = configById.get();
+            if(mailConfigDto.getAuthorityEmails() != null && !mailConfigDto.getAuthorityEmails().isEmpty()) {
+                String emails = String.join(",", mailConfigDto.getAuthorityEmails());
+                existingConfig.setAuthorityEmails(emails);
+            }
             existingConfig.setConfigValue(mailConfigDto.getConfigValue());
             existingConfig.setUpdatedBy(mailConfigDto.getUpdatedBy());
             existingConfig.setUpdatedDate(Timestamp.valueOf(LocalDateTime.now()));

@@ -151,8 +151,8 @@ public class UserController {
             }
             return response;
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Error in activating user.");
+            log.error("Error in activating user", e);
+            throw new CustomException(e.getLocalizedMessage(), e.getLocalizedMessage());
         }
     }
 
