@@ -37,6 +37,7 @@ import org.upsmf.grievance.model.Role;
 import org.upsmf.grievance.model.User;
 import org.upsmf.grievance.model.UserDepartment;
 import org.upsmf.grievance.model.UserRole;
+import org.upsmf.grievance.model.reponse.Response;
 import org.upsmf.grievance.repository.RoleRepository;
 import org.upsmf.grievance.repository.UserDepartmentRepository;
 import org.upsmf.grievance.repository.UserRepository;
@@ -842,7 +843,7 @@ public class IntegrationServiceImpl implements IntegrationService {
                 User userDetails = user.get();
                 // if role is admin/secretary/Grievance Admin
                 // then only one user can be active at a time
-                ResponseEntity<String> checkRoleAndActiveCount = checkRoleAndActiveCount(userDetails);
+                ResponseEntity<Response> checkRoleAndActiveCount = checkRoleAndActiveCount(userDetails);
                 if(checkRoleAndActiveCount.getStatusCode().value() != HttpStatus.OK.value()) {
                     return checkRoleAndActiveCount;
                 }
@@ -866,19 +867,20 @@ public class IntegrationServiceImpl implements IntegrationService {
                         if(superadmin) {
                             updateMailConfigEmail(data.getEmail());
                         }
-                        return ResponseEntity.ok(data);
+                        return ResponseEntity.ok(Response.builder().body(data).status(HttpStatus.OK.value()).build());
                     }
-                    return ResponseEntity.internalServerError().body("Error in activating user.");
+
+                    return ResponseEntity.internalServerError().body(Response.builder().body("Error in activating user.").status(HttpStatus.INTERNAL_SERVER_ERROR.value()).build());
                 } catch (Exception e) {
                     e.printStackTrace();
-                    return ResponseEntity.internalServerError().body("Error in activating user.");
+                    return ResponseEntity.internalServerError().body(Response.builder().body("Error in activating user.").status(HttpStatus.INTERNAL_SERVER_ERROR.value()).build());
                 }
             }
         }
         return ResponseEntity.internalServerError().body("Unable to find user details for provided Id.");
     }
 
-    private ResponseEntity<String> checkRoleAndActiveCount(User userDetails) {
+    private ResponseEntity<Response> checkRoleAndActiveCount(User userDetails) {
         if(userDetails == null || userDetails.getRoles() == null
                 || Arrays.stream(userDetails.getRoles()).count() <= 0) {
             log.error("Failed to check user role");
@@ -902,9 +904,9 @@ public class IntegrationServiceImpl implements IntegrationService {
         });
         log.debug("match count for user role - {}", matchCount.get());
         if(matchCount.get() > 0) {
-            return ResponseEntity.badRequest().body("Application is designed to have only one active Secretary or Admin or Grievance Nodal.");
+            return ResponseEntity.badRequest().body(Response.builder().body("Application is designed to have only one active Secretary or Admin or Grievance Nodal.").status(HttpStatus.BAD_REQUEST.value()).build());
         }
-        return ResponseEntity.ok("Success");
+        return ResponseEntity.ok(Response.builder().body("Success").status(HttpStatus.OK.value()).build());
     }
 
     @Override
