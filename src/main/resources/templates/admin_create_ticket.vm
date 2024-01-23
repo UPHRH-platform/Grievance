@@ -85,7 +85,7 @@
                                                                                     <td align="justify" class="esd-block-text es-m-txt-l">
                                                                                         <p></br></p>
                                                                                         <p>Dear ${first_name},</p>
-                                                                                        <p>We hope this message finds you well. We wanted to inform you that a new grievance ticket has been created regarding ${ticket_description}.</br> The ticket has been assigned the following details:</p>
+                                                                                        <p>We hope this message finds you well. We wanted to inform you that a new grievance ticket has been created regarding </br><strong>${ticket_description}</strong>.</br> </br>The ticket has been assigned the following details:</p>
                                                                                         <p>
                                                                                             <div>Grievance ID: <strong>${id}</strong></div>
                                                                                             <div>Date Created: <strong>${created_date}</strong></div>
