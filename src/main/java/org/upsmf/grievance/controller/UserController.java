@@ -152,7 +152,7 @@ public class UserController {
             return response;
         } catch (Exception e) {
             log.error("Error in activating user", e);
-            throw new CustomException("Error in activating user.");
+            throw new CustomException(e.getLocalizedMessage(), e.getLocalizedMessage());
         }
     }
 
