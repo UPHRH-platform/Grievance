@@ -870,21 +870,21 @@ public class IntegrationServiceImpl implements IntegrationService {
                         return ResponseEntity.ok(Response.builder().body(data).status(HttpStatus.OK.value()).build());
                     }
 
-                    throw new CustomException("Error in activating user.");
+                    throw new CustomException("Error in activating user.", "Error in activating user.");
                 } catch (Exception e) {
-                    e.printStackTrace();
-                    throw new CustomException("Error in activating user.");
+                    log.error("Error in activating user ", e);
+                    throw new CustomException("Error in activating user.", "Error in activating user.");
                 }
             }
         }
-        throw new CustomException("Unable to find user details for provided Id.");
+        throw new CustomException("Unable to find user details for provided Id.", "Unable to find user details for provided Id.");
     }
 
     private ResponseEntity<Response> checkRoleAndActiveCount(User userDetails) {
         if(userDetails == null || userDetails.getRoles() == null
                 || Arrays.stream(userDetails.getRoles()).count() <= 0) {
             log.error("Failed to check user role");
-            throw new CustomException("Failed to check user role");
+            throw new CustomException("Failed to check user role", "Failed to check user role");
         }
         List<User> users = userRepository.findAll();
         AtomicLong matchCount = new AtomicLong();
@@ -904,7 +904,7 @@ public class IntegrationServiceImpl implements IntegrationService {
         });
         log.debug("match count for user role - {}", matchCount.get());
         if(matchCount.get() > 0) {
-            throw new CustomException("Application is designed to have only one active Secretary or Admin or Grievance Nodal.");
+            throw new CustomException("Application is designed to have only one active Secretary or Admin or Grievance Nodal.", "Application is designed to have only one active Secretary or Admin or Grievance Nodal.");
         }
         return ResponseEntity.ok(Response.builder().body("Success").status(HttpStatus.OK.value()).build());
     }
