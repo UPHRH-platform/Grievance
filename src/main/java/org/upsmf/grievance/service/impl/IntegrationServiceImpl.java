@@ -870,21 +870,21 @@ public class IntegrationServiceImpl implements IntegrationService {
                         return ResponseEntity.ok(Response.builder().body(data).status(HttpStatus.OK.value()).build());
                     }
 
-                    return ResponseEntity.internalServerError().body(Response.builder().body("Error in activating user.").status(HttpStatus.INTERNAL_SERVER_ERROR.value()).build());
+                    throw new CustomException("Error in activating user.");
                 } catch (Exception e) {
                     e.printStackTrace();
-                    return ResponseEntity.internalServerError().body(Response.builder().body("Error in activating user.").status(HttpStatus.INTERNAL_SERVER_ERROR.value()).build());
+                    throw new CustomException("Error in activating user.");
                 }
             }
         }
-        return ResponseEntity.internalServerError().body("Unable to find user details for provided Id.");
+        throw new CustomException("Unable to find user details for provided Id.");
     }
 
     private ResponseEntity<Response> checkRoleAndActiveCount(User userDetails) {
         if(userDetails == null || userDetails.getRoles() == null
                 || Arrays.stream(userDetails.getRoles()).count() <= 0) {
             log.error("Failed to check user role");
-            throw new RuntimeException("Failed to check user role");
+            throw new CustomException("Failed to check user role");
         }
         List<User> users = userRepository.findAll();
         AtomicLong matchCount = new AtomicLong();
@@ -904,7 +904,7 @@ public class IntegrationServiceImpl implements IntegrationService {
         });
         log.debug("match count for user role - {}", matchCount.get());
         if(matchCount.get() > 0) {
-            return ResponseEntity.badRequest().body(Response.builder().body("Application is designed to have only one active Secretary or Admin or Grievance Nodal.").status(HttpStatus.BAD_REQUEST.value()).build());
+            throw new CustomException("Application is designed to have only one active Secretary or Admin or Grievance Nodal.");
         }
         return ResponseEntity.ok(Response.builder().body("Success").status(HttpStatus.OK.value()).build());
     }
