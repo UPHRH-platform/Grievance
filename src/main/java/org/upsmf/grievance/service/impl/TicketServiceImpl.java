@@ -487,12 +487,23 @@ public class TicketServiceImpl implements TicketService {
             log.info("ticket is getting reopened we will reset escalation date time - {}", ticket.getId());
             ticket.setEscalatedDate(null);
         }
+        //handle un-junk
+        if (Boolean.FALSE.equals(updateTicketRequest.getIsJunk()) && Boolean.TRUE.equals(oldIsJunkValue)) {
+            ticket.setPriority(TicketPriority.LOW);
+            ticket.setEscalated(false);
+            ticket.setEscalatedToAdmin(false);
+            ticket.setReminderCounter(0l);
+            ticket.setStatus(TicketStatus.OPEN);
+        }
+        log.info("ticket before saving in Postgres - {}", ticket);
         // update ticket in DB
         ticketRepository.save(ticket);
         ticket = getTicketById(ticket.getId());
+        log.info("ticket after saving in Postgres - {}", ticket);
         // check if ticket exists in ES
         Optional<org.upsmf.grievance.model.es.Ticket> esTicketDetails = esTicketRepository.findOneByTicketId(updateTicketRequest.getId());
         org.upsmf.grievance.model.es.Ticket updatedESTicket = convertToESTicketObj(ticket);
+        log.info("ticket after saving in ES - {}", updatedESTicket);
         if(esTicketDetails.isPresent()) {
             // TODO revisit this
             esTicketRepository.deleteById(esTicketDetails.get().getId());
@@ -1021,6 +1032,7 @@ public class TicketServiceImpl implements TicketService {
     private org.upsmf.grievance.model.es.Ticket convertToESTicketObj(Ticket ticket) {
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DateUtil.DEFAULT_DATE_FORMATTS);
 
+        log.info("ticket before saving in ES - {}", ticket);
         log.info(">>>>>>>>>>>>>>>>>>>>>> system time from ticket data: "
                 + ticket.getCreatedDate().toLocalDateTime().format(dateTimeFormatter));
 

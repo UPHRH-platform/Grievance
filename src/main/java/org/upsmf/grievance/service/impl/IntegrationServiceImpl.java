@@ -835,7 +835,7 @@ public class IntegrationServiceImpl implements IntegrationService {
     }
 
     @Override
-    public ResponseEntity<?> activateUser(JsonNode payload) throws Exception {
+    public ResponseEntity<Response> activateUser(JsonNode payload) throws Exception {
         long id = payload.get("id").asLong(-1);
         if (id > 0) {
             Optional<User> user = userRepository.findById(id);

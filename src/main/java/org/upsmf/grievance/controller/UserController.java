@@ -144,10 +144,19 @@ public class UserController {
     @PostMapping("/activate")
     public ResponseEntity activateUser(@RequestBody JsonNode payload) {
         try {
-            ResponseEntity<?> response = integrationService.activateUser(payload);
+            ResponseEntity<Response> response = integrationService.activateUser(payload);
             if(response.getStatusCode().value() == HttpStatus.OK.value()) {
-                User user = (User) response.getBody();
-                return createUserResponse(user);
+                log.info("activating user - {}", response);
+                Response responseBody = response.getBody();
+                log.info("activating user - response body {}", responseBody);
+                if(responseBody != null
+                        && responseBody.getBody() != null
+                        && responseBody.getStatus() == HttpStatus.OK.value()) {
+                    User user = (User)responseBody.getBody();
+                    log.info("activating user - response body | user {}", user);
+                    return createUserResponse(user);
+                }
+
             }
             return response;
         } catch (Exception e) {

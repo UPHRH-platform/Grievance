@@ -7,6 +7,7 @@ import org.upsmf.grievance.dto.CreateUserDto;
 import org.upsmf.grievance.dto.UpdateUserDto;
 import org.upsmf.grievance.dto.UserResponseDto;
 import org.upsmf.grievance.model.User;
+import org.upsmf.grievance.model.reponse.Response;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,7 +29,7 @@ public interface IntegrationService {
 
     void assignRole(Long userId, Long roleId) throws NotFoundException;
 
-    ResponseEntity<?> activateUser(JsonNode payload) throws Exception;
+    ResponseEntity<Response> activateUser(JsonNode payload) throws Exception;
 
     User deactivateUser(JsonNode payload) throws Exception;
 

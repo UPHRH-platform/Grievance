@@ -286,7 +286,7 @@ public class DashboardServiceImpl implements DashboardService {
         // get total ticket count for provided filter and date range
         long totalTicketCount = getTotalTicketsCount(filter, date);
         // get total escalated ticket count
-        long totalEscalatedTicketCount = getEscalatedTicketsCount(filter, date, true);
+        long totalEscalatedTicketCount = getEscalatedTicketsCount(filter, date, true, null);
         // get total ticket nudged
         long totalNudgedTicketCount = getNudgedTicketsCount(filter, date);
         // get total ticket open greater than 21 days
@@ -320,8 +320,11 @@ public class DashboardServiceImpl implements DashboardService {
      * @param isEscalated
      * @return
      */
-    private long getEscalatedTicketsCount(Map<String, Object> filter, SearchDateRange date, boolean isEscalated) {
+    private long getEscalatedTicketsCount(Map<String, Object> filter, SearchDateRange date, boolean isEscalated, Boolean isOpen) {
         BoolQueryBuilder esQuery = createESQuery(filter, date);
+        if(isOpen != null && isOpen.booleanValue()) {
+            esQuery.must(QueryBuilders.matchQuery("status", "OPEN"));
+        }
         // adding condition to filter escalated ticket
         esQuery.must(QueryBuilders.matchQuery("is_escalated_to_admin", isEscalated));
         return executeQueryForCount(esQuery);
@@ -490,7 +493,7 @@ public class DashboardServiceImpl implements DashboardService {
         // get total ticket count for provided filter and date range
         long totalTicketCount = getTotalTicketsCount(filter, date);
         // get total escalated ticket count
-        long totalEscalatedTicketCount = getEscalatedTicketsCount(filter, date, true);
+        long totalEscalatedTicketCount = getEscalatedTicketsCount(filter, date, true, true);
         // get open ticket count
         long totalOpenTicketCount = getTicketCountByTicketStatus(filter, date, TicketStatus.OPEN);
         // get closed ticket count
