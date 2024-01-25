@@ -490,6 +490,10 @@ public class TicketServiceImpl implements TicketService {
         //handle un-junk
         if (Boolean.FALSE.equals(updateTicketRequest.getIsJunk()) && Boolean.TRUE.equals(oldIsJunkValue)) {
             ticket.setPriority(TicketPriority.LOW);
+            ticket.setEscalated(false);
+            ticket.setEscalatedToAdmin(false);
+            ticket.setReminderCounter(0l);
+            ticket.setStatus(TicketStatus.OPEN);
         }
         // update ticket in DB
         ticketRepository.save(ticket);
