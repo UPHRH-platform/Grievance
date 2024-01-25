@@ -487,6 +487,10 @@ public class TicketServiceImpl implements TicketService {
             log.info("ticket is getting reopened we will reset escalation date time - {}", ticket.getId());
             ticket.setEscalatedDate(null);
         }
+        //handle un-junk
+        if (Boolean.FALSE.equals(updateTicketRequest.getIsJunk()) && Boolean.TRUE.equals(oldIsJunkValue)) {
+            ticket.setPriority(TicketPriority.LOW);
+        }
         // update ticket in DB
         ticketRepository.save(ticket);
         ticket = getTicketById(ticket.getId());
