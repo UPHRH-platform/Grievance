@@ -31,11 +31,9 @@ pipeline {
         }
         stage('Push to GCR') {
             steps {
-               
-                    script {
-                        #sh 'echo $GCR_KEY | docker login -u _json_key --password-stdin ${GCR_REGISTRY}'
+                script {
                         sh "docker push ${GCR_REGISTRY}/${IMAGE_NAME}:${dockerTag}"
-                    }
+                }
             }
         }   
 
