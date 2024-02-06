@@ -5,7 +5,7 @@ pipeline {
         GCR_REGISTRY = "asia.gcr.io/upsmf-368011" 
         IMAGE_NAME = "grievance-be-uat"
         BRANCH_NAME = "main" 
-	IMAGE_TAG = 1.0   
+	IMAGE_TAG = "1.0"   
     }
 
     stages {
