@@ -31,9 +31,9 @@ pipeline {
         }
         stage('Push to GCR') {
             steps {
-                withCredentials([string(credentialsId: 'gcr-service-account-key', variable: 'GCR_KEY')]) {
+                #withCredentials([string(credentialsId: 'gcr-service-account-key', variable: 'GCR_KEY')]) {
                     script {
-                        sh 'echo $GCR_KEY | docker login -u _json_key --password-stdin ${GCR_REGISTRY}'
+                        #sh 'echo $GCR_KEY | docker login -u _json_key --password-stdin ${GCR_REGISTRY}'
                         sh "docker push ${GCR_REGISTRY}/${IMAGE_NAME}:${dockerTag}"
                     }
                 }
