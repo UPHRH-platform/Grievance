@@ -32,7 +32,7 @@ pipeline {
         stage('Push to GCR') {
             steps {
                 script {
-                        sh "docker push ${GCR_REGISTRY}/${IMAGE_NAME}:${dockerTag}"
+                    sh "docker push ${GCR_REGISTRY}/${IMAGE_NAME}:${dockerTag}"
                 }
             }
         }   
