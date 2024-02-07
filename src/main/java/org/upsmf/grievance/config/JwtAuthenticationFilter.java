@@ -5,11 +5,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SigningKeyResolver;
+import io.jsonwebtoken.SigningKeyResolverAdapter;
+import io.jsonwebtoken.impl.DefaultClaims;
+import io.jsonwebtoken.impl.DefaultJwsHeader;
 import org.apache.commons.lang.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.upsmf.grievance.constants.JsonKey;
+import org.upsmf.grievance.util.AccessTokenValidator;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletContext;
@@ -17,6 +24,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.security.Key;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -30,6 +38,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	@Value("${urls.whitelist}")
 	private String whitelistUrls;
+
+	@Autowired
+	private StringRedisTemplate redisTemplate;
 
 	public static final String HEADER_AUTHENTICATION = "Authorization";
 	public static final String STATUS_CODE = "statusCode";
@@ -71,10 +82,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			} else {
 				logger.warn("couldn't find bearer string, will ignore the header");
 			}
-			if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-				if (validateToken(authToken)) {
-					authorized = Boolean.TRUE;
-				}
+			// check token in REDIS
+			String persistedToken = redisTemplate.opsForValue().get(username);
+			if(persistedToken == null || persistedToken.isEmpty()
+					|| !persistedToken.equals(authToken)) {
+				res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+				res.getWriter()
+						.write(failureResponse(HttpStatus.FORBIDDEN.getReasonPhrase()));
+				res.setContentType("application/json");
+				res.getWriter().flush();
+				return;
+			}
+			if (persistedToken.equals(authToken)) {
+				authorized = Boolean.TRUE;
 			}
 		}
 
@@ -90,29 +110,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		chain.doFilter(req, res);
 	}
 
-	private boolean validateToken(String authToken) {
-		Claims claims = Jwts.parser().parseClaimsJws(authToken).getBody();
-		Long exp = (Long) claims.get("exp");
-		Instant instant = Instant.ofEpochSecond(exp);
-		ZonedDateTime zdt = ZonedDateTime.ofInstant(instant, ZoneId.of(ZoneOffset.SHORT_IDS.get("IST")));
-		ZonedDateTime currDt = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of(ZoneOffset.SHORT_IDS.get("IST")));
-		if(zdt.isAfter(currDt)){
-			return Boolean.TRUE;
-		} else {
-			return Boolean.FALSE;
-		}
-	}
-
 	public String getUserName(String authToken) {
 		return getUsernameFromToken(authToken);
 	}
 
 	private String getUsernameFromToken(String authToken) {
-		if(validateToken(authToken)) {
-			Claims claims = Jwts.parser().parseClaimsJws(authToken).getBody();
-			return claims.get("username").toString();
+		String userId = AccessTokenValidator.verifyUserToken(authToken, true);
+		if (userId.equalsIgnoreCase(JsonKey.UNAUTHORIZED)) {
+			return null;
 		}
-		return null;
+		return userId;
 	}
 
 	public static String failureResponse(String message) throws JsonProcessingException {
