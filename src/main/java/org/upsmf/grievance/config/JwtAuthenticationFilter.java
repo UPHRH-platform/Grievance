@@ -1,123 +1,131 @@
 package org.upsmf.grievance.config;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.servlet.FilterChain;
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-	/*@Autowired
-	private UserService userService;
-
-	@Autowired
-	private JwtTokenUtil jwtTokenUtil;*/
-
 	@Value("${urls.whitelist}")
 	private String whitelistUrls;
+
+	public static final String HEADER_AUTHENTICATION = "Authorization";
+	public static final String STATUS_CODE = "statusCode";
+	public static final String STATUS = "statusInfo";
+	public static final String STATUS_MESSAGE = "statusMessage";
+	public static final String ERROR_MESSAGE = "errorMessage";
+	public static final String TOKEN_PREFIX = "Bearer ";
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
 			throws IOException, ServletException {
 
 		
-		/*List<String> whitelistUrlList = Arrays.asList(whitelistUrls.split(","));
+		List<String> whitelistUrlList = Arrays.asList(whitelistUrls.split(","));
 
 		ServletContext ctx = req.getServletContext();
 		Boolean whiteListed;
 		Boolean authorized = Boolean.FALSE;
 		String username = null;
 		String authToken = null;
-		UserDetails userDetails = null;
 		Map<String, Object> userInfoObectMap = new HashMap<>();
 
 		if (whitelistUrlList.contains(req.getRequestURI())) {
 			whiteListed = Boolean.TRUE;
 		} else {
 			whiteListed = Boolean.FALSE;
-			String header = req.getHeader(HEADER_STRING);
+			String header = req.getHeader(HEADER_AUTHENTICATION);
 			if (StringUtils.isBlank(header)) {
 				res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 				res.getWriter()
-						.write(ResponseGenerator.failureResponse(ResponseMessages.ErrorMessages.UNAUTHORIZED_ACCESS));
+						.write(failureResponse(HttpStatus.UNAUTHORIZED.getReasonPhrase()));
 				res.setContentType("application/json");
 				res.getWriter().flush();
 				return;
 			}
 			if (header.startsWith(TOKEN_PREFIX)) {
 				authToken = header.replace(TOKEN_PREFIX, "");
-				username = getUserName(username, authToken);
+				username = getUserName(authToken);
 			} else {
 				logger.warn("couldn't find bearer string, will ignore the header");
 			}
 			if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-				userInfoObectMap = userService.getUserInfoObjects(username);
-				userDetails = (UserDetails) userInfoObectMap.get("UserDetails");
-				if (jwtTokenUtil.validateToken(authToken, userDetails)) {
-					UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-							userDetails, null, Arrays.asList(new SimpleGrantedAuthority("ROLE_ADMIN")));
-					authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
-					logger.info("authenticated user " + username + ", setting security context");
-					SecurityContextHolder.getContext().setAuthentication(authentication);
+				if (validateToken(authToken)) {
+					authorized = Boolean.TRUE;
 				}
 			}
-
-			
-			Boolean userTokenAvailable = userService.findUserByToken(authToken);
-			authorized = checkForAuthorization(req, ctx, authorized, userDetails, userInfoObectMap, userTokenAvailable);
 		}
 
 		if (!authorized && !whiteListed) {
 			res.setStatus(HttpServletResponse.SC_FORBIDDEN);
 			res.getWriter()
-					.write(ResponseGenerator.failureResponse(ResponseMessages.ErrorMessages.INVALID_ACCESS_ROLE));
+					.write(failureResponse(HttpStatus.FORBIDDEN.getReasonPhrase()));
 			res.setContentType("application/json");
 			res.getWriter().flush();
 			return;
-		}*/
+		}
 
 		chain.doFilter(req, res);
 	}
 
-	/*public String getUserName(String username, String authToken) {
-		try {
-			username = jwtTokenUtil.getUsernameFromToken(authToken);
-		} catch (IllegalArgumentException e) {
-			logger.error("an error occured during getting username from token", e);
-		} catch (ExpiredJwtException e) {
-			logger.warn("the token is expired and not valid anymore", e);
-		} catch (SignatureException e) {
-			logger.error("Authentication Failed. Username or Password not valid.");
+	private boolean validateToken(String authToken) {
+		Claims claims = Jwts.parser().parseClaimsJws(authToken).getBody();
+		Long exp = (Long) claims.get("exp");
+		Instant instant = Instant.ofEpochSecond(exp);
+		ZonedDateTime zdt = ZonedDateTime.ofInstant(instant, ZoneId.of(ZoneOffset.SHORT_IDS.get("IST")));
+		ZonedDateTime currDt = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of(ZoneOffset.SHORT_IDS.get("IST")));
+		if(zdt.isAfter(currDt)){
+			return Boolean.TRUE;
+		} else {
+			return Boolean.FALSE;
 		}
-		return username;
 	}
 
-	public Boolean checkForAuthorization(HttpServletRequest req, ServletContext ctx, Boolean authorized,
-			UserDetails userDetails, Map<String, Object> userInfoObectMap, Boolean userTokenAvailable) {
-		if (userTokenAvailable) {
-			try {
-				if (userDetails != null) {
-					User user = (User) userInfoObectMap.get("User");
-					req.setAttribute("UserInfo", user);
-					ctx.setAttribute("UserInfo", user);
-					List<Long> roleIds = MasterDataManager.getRoleIdsForUserId(user.getId());
-					for (Long roleId : roleIds) {
-						List<String> actionUrlList = MasterDataManager.getActionUrlsForRoleId(roleId);
-						if (actionUrlList.contains(req.getRequestURI())) {
-							ctx.setAttribute("Authorized", Boolean.TRUE);
-							authorized = Boolean.TRUE;
-							break;
-						}
-					}
-				}
-			} catch (UsernameNotFoundException e) {
-				e.getMessage();
-			}
+	public String getUserName(String authToken) {
+		return getUsernameFromToken(authToken);
+	}
+
+	private String getUsernameFromToken(String authToken) {
+		if(validateToken(authToken)) {
+			Claims claims = Jwts.parser().parseClaimsJws(authToken).getBody();
+			return claims.get("username").toString();
 		}
-		return authorized;
-	}*/
+		return null;
+	}
+
+	public static String failureResponse(String message) throws JsonProcessingException {
+		ObjectMapper objectMapper = new ObjectMapper();
+		ObjectNode actualResponse = objectMapper.createObjectNode();
+
+		ObjectNode response = objectMapper.createObjectNode();
+		response.put(STATUS_CODE, HttpStatus.BAD_REQUEST.value());
+		response.put(STATUS_MESSAGE, HttpStatus.BAD_REQUEST.getReasonPhrase());
+		response.put(ERROR_MESSAGE, message);
+		actualResponse.putPOJO(STATUS, response);
+
+		return objectMapper.writeValueAsString(actualResponse);
+	}
+
 }
