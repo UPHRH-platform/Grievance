@@ -205,16 +205,25 @@ public class IntegrationServiceImpl implements IntegrationService {
 
                     // create user userDepartment mapping
                     if (attributeMap.get("departmentId") != null) {
-                        UserDepartment userDepartment = UserDepartment.builder()
-                                .departmentId(Long.valueOf(attributeMap.get("departmentId")))
-                                .departmentName(attributeMap.get("departmentName"))
-                                .councilId(Long.valueOf(attributeMap.get("councilId")))
-                                .councilName(attributeMap.get("councilName"))
-//                            .userId(savedUser.getId())
-                                .build();
-
-                        UserDepartment savedUserDepartment = userDepartmentRepository.save(userDepartment);
-                        newUser.setUserDepartment(savedUserDepartment);
+                        // if user role is grievance nodal then we will reuse the same entry
+                        if(attributeMap.get("departmentName").equalsIgnoreCase("OTHER")
+                                && attributeMap.get("councilName").equalsIgnoreCase("OTHER")) {
+                            String departmentName = getDepartmentByCouncilIDAndDepartmentId(attributeMap);
+                            Optional<User> byUserDepartment = findGrievanceNodalAdmin(departmentName);
+                            //Prevent creating multiple grievance nodal admin
+                            if (byUserDepartment.isPresent()) {
+                                User grievanceUser = byUserDepartment.get();
+                                if(grievanceUser != null && grievanceUser.getStatus() == 0) {
+                                    newUser.setUserDepartment(grievanceUser.getUserDepartment());
+                                } else {
+                                    log.error("User has already been created for other department");
+                                    throw new InvalidDataException("User has already been created for other department");
+                                }
+                            }
+                            createUserDepartment(attributeMap, newUser);
+                        } else {
+                            createUserDepartment(attributeMap, newUser);
+                        }
                     }
 
                     User savedUser = userRepository.save(newUser);
@@ -239,6 +248,32 @@ public class IntegrationServiceImpl implements IntegrationService {
         } else {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    private void createUserDepartment(Map<String, String> attributeMap, User newUser) {
+        UserDepartment userDepartment = UserDepartment.builder()
+                .departmentId(Long.valueOf(attributeMap.get("departmentId")))
+                .departmentName(attributeMap.get("departmentName"))
+                .councilId(Long.valueOf(attributeMap.get("councilId")))
+                .councilName(attributeMap.get("councilName"))
+//                            .userId(savedUser.getId())
+                .build();
+
+        UserDepartment savedUserDepartment = userDepartmentRepository.save(userDepartment);
+        newUser.setUserDepartment(savedUserDepartment);
+    }
+
+    private String getDepartmentByCouncilIDAndDepartmentId(Map<String, String> attributeMap) {
+        Long departmentId = Long.valueOf(attributeMap.get("departmentId"));
+        Long councilId = Long.valueOf(attributeMap.get("councilId"));
+        boolean validDepartment = ticketDepartmentService.validateDepartmentInCouncil(departmentId, councilId);
+        if (!validDepartment) {
+            log.error("Failed to validate department id and council id");
+            throw new InvalidDataException("Failed to validate department and coucil id mapping");
+        }
+
+        String departmentName = ticketDepartmentService.getDepartmentName(departmentId, councilId);
+        return departmentName;
     }
 
 
@@ -270,10 +305,15 @@ public class IntegrationServiceImpl implements IntegrationService {
                     String departmentName = ticketDepartmentService.getDepartmentName(departmentId, councilId);
                     String councilName = ticketCouncilService.getCouncilName(councilId);
 
+                    Optional<User> byUserDepartment = findGrievanceNodalAdmin(departmentName);
 //                  Prevent creating multiple grievance nodal admin
-                    if (findGrievanceNodalAdmin(departmentName).isPresent()) {
-                        log.error("User has already been created for other department");
-                        throw new InvalidDataException("User has already been created for other department");
+                    if (byUserDepartment.isPresent()) {
+                        User user = byUserDepartment.get();
+                        if(user != null && user.getStatus() == 1){
+                            log.info("user department mapping present for active user - {}", user);
+                            log.error("User has already been created for other department");
+                            throw new InvalidDataException("User has already been created for other department");
+                        }
                     }
 
                     attributeMap.put("departmentId", String.valueOf(departmentId));
@@ -307,20 +347,7 @@ public class IntegrationServiceImpl implements IntegrationService {
                     .findByCouncilNameAndCouncilName("OTHER", "OTHER");
 
             if (userDepartmentOptional.isPresent()) {
-                Optional<User> byUserDepartment = userRepository.findByUserDepartment(userDepartmentOptional.get());
-                if(byUserDepartment.isPresent()){
-                    User user = byUserDepartment.get();
-                    if(user != null && user.getStatus() == 1){
-                        log.info("user department mapping present for active user - {}", user);
-                        return byUserDepartment;
-                    } else {
-                        log.info("removing old user department mapping for user - {}", user);
-                        // remove mapping
-                        if(user != null && user.getUserDepartment() != null){
-                            userDepartmentRepository.deleteById(user.getUserDepartment().getId());
-                        }
-                    }
-                }
+                return userRepository.findByUserDepartment(userDepartmentOptional.get());
             }
         }
         return Optional.empty();
