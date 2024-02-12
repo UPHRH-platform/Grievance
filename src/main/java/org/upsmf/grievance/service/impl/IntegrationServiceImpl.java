@@ -211,14 +211,16 @@ public class IntegrationServiceImpl implements IntegrationService {
                             log.info("inside user department creation for other department");
                             String departmentName = getDepartmentByCouncilIDAndDepartmentId(attributeMap);
                             log.info("inside user department creation for department - {}", departmentName);
-                            Optional<User> byUserDepartment = findGrievanceNodalAdmin(departmentName);
+                            Optional<List<User>> byUserDepartment = findGrievanceNodalAdmin(departmentName);
                             log.info("inside user department creation for other department - {}", byUserDepartment);
                             //Prevent creating multiple grievance nodal admin
                             if (byUserDepartment.isPresent()) {
-                                User grievanceUser = byUserDepartment.get();
-                                if(grievanceUser != null && grievanceUser.getStatus() == 0) {
+                                List<User> activeGrievanceUsers = byUserDepartment.get().stream().filter(x -> x.getStatus() == 1).collect(Collectors.toList());
+                                List<User> inactiveGrievanceUsers = byUserDepartment.get().stream().filter(x -> x.getStatus() == 0).collect(Collectors.toList());
+                                if(activeGrievanceUsers == null
+                                        && inactiveGrievanceUsers != null && inactiveGrievanceUsers.size() > 0) {
                                     log.info("inside user department creation for other department, setting department");
-                                    newUser.setUserDepartment(grievanceUser.getUserDepartment());
+                                    newUser.setUserDepartment(inactiveGrievanceUsers.get(0).getUserDepartment());
                                 } else {
                                     log.error("User has already been created for other department");
                                     throw new InvalidDataException("User has already been created for other department");
@@ -305,18 +307,18 @@ public class IntegrationServiceImpl implements IntegrationService {
 
                     if (!validDepartment) {
                         log.error("Failed to validate department id and council id");
-                        throw new InvalidDataException("Failed to validate department and coucil id mapping");
+                        throw new InvalidDataException("Failed to validate department and council id mapping");
                     }
 
                     String departmentName = ticketDepartmentService.getDepartmentName(departmentId, councilId);
                     String councilName = ticketCouncilService.getCouncilName(councilId);
 
-                    Optional<User> byUserDepartment = findGrievanceNodalAdmin(departmentName);
+                    Optional<List<User>> byUserDepartment = findGrievanceNodalAdmin(departmentName);
 //                  Prevent creating multiple grievance nodal admin
                     if (byUserDepartment.isPresent()) {
-                        User user = byUserDepartment.get();
-                        if(user != null && user.getStatus() == 1){
-                            log.info("user department mapping present for active user - {}", user);
+                        List<User> users = byUserDepartment.get().stream().filter(x -> x.getStatus() == 1).collect(Collectors.toList());
+                        if(users != null && users.size() > 0){
+                            log.info("user department mapping present for active user - {}", users);
                             log.error("User has already been created for other department");
                             throw new InvalidDataException("User has already been created for other department");
                         }
@@ -347,13 +349,13 @@ public class IntegrationServiceImpl implements IntegrationService {
      * @param departmentName
      * @return
      */
-    private Optional<User> findGrievanceNodalAdmin(@NonNull String departmentName) {
+    private Optional<List<User>> findGrievanceNodalAdmin(@NonNull String departmentName) {
         if ("OTHER".equalsIgnoreCase(departmentName)) {
             Optional<UserDepartment> userDepartmentOptional = userDepartmentRepository
                     .findByCouncilNameAndCouncilName("OTHER", "OTHER");
 
             if (userDepartmentOptional.isPresent()) {
-                return userRepository.findByUserDepartment(userDepartmentOptional.get());
+                return userRepository.findAllByUserDepartment(userDepartmentOptional.get());
             }
         }
         return Optional.empty();
@@ -472,7 +474,7 @@ public class IntegrationServiceImpl implements IntegrationService {
         } catch (CustomException e) {
             throw new UserException(e.getMessage(), ErrorCode.USER_002, "User exist in central UM");
         } catch (Exception e) {
-            log.error("Error while checking user existance through central UM");
+            log.error("Error while checking user existence through central UM");
             throw new UserException("Due to technical issue unable to process your request", ErrorCode.USER_001,
                     "Error while finding user in central UM");
         }
