@@ -208,19 +208,25 @@ public class IntegrationServiceImpl implements IntegrationService {
                         // if user role is grievance nodal then we will reuse the same entry
                         if(attributeMap.get("departmentName").equalsIgnoreCase("OTHER")
                                 && attributeMap.get("councilName").equalsIgnoreCase("OTHER")) {
+                            log.info("inside user department creation for other department");
                             String departmentName = getDepartmentByCouncilIDAndDepartmentId(attributeMap);
+                            log.info("inside user department creation for department - {}", departmentName);
                             Optional<User> byUserDepartment = findGrievanceNodalAdmin(departmentName);
+                            log.info("inside user department creation for other department - {}", byUserDepartment);
                             //Prevent creating multiple grievance nodal admin
                             if (byUserDepartment.isPresent()) {
                                 User grievanceUser = byUserDepartment.get();
                                 if(grievanceUser != null && grievanceUser.getStatus() == 0) {
+                                    log.info("inside user department creation for other department, setting department");
                                     newUser.setUserDepartment(grievanceUser.getUserDepartment());
                                 } else {
                                     log.error("User has already been created for other department");
                                     throw new InvalidDataException("User has already been created for other department");
                                 }
+                            } else {
+                                log.info("inside user department creation for other department || creating default");
+                                createUserDepartment(attributeMap, newUser);
                             }
-                            createUserDepartment(attributeMap, newUser);
                         } else {
                             createUserDepartment(attributeMap, newUser);
                         }
