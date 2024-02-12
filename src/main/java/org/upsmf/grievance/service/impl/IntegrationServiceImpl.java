@@ -182,7 +182,7 @@ public class IntegrationServiceImpl implements IntegrationService {
             try {
                 responseNode = mapper.readTree(userContent);
             } catch (JsonParseException jp) {
-                log.error("Error while parsing success response", jp);
+                log.error("Ignore || Error while parsing success response", jp.getLocalizedMessage());
             }
             if (responseNode != null) {
                 if (responseNode.has("errorMessage")) {
