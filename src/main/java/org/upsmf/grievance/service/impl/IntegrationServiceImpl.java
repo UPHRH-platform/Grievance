@@ -311,7 +311,14 @@ public class IntegrationServiceImpl implements IntegrationService {
                 if(byUserDepartment.isPresent()){
                     User user = byUserDepartment.get();
                     if(user != null && user.getStatus() == 1){
+                        log.info("user department mapping present for active user - {}", user);
                         return byUserDepartment;
+                    } else {
+                        log.info("removing old user department mapping for user - {}", user);
+                        // remove mapping
+                        if(user != null && user.getUserDepartment() != null){
+                            userDepartmentRepository.deleteById(user.getUserDepartment().getId());
+                        }
                     }
                 }
             }
