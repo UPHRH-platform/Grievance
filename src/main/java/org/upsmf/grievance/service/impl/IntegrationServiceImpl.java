@@ -216,8 +216,10 @@ public class IntegrationServiceImpl implements IntegrationService {
                             //Prevent creating multiple grievance nodal admin
                             if (byUserDepartment.isPresent()) {
                                 List<User> activeGrievanceUsers = byUserDepartment.get().stream().filter(x -> x.getStatus() == 1).collect(Collectors.toList());
+                                log.info("inside user department creation for other department || active users - {}", activeGrievanceUsers);
                                 List<User> inactiveGrievanceUsers = byUserDepartment.get().stream().filter(x -> x.getStatus() == 0).collect(Collectors.toList());
-                                if(activeGrievanceUsers == null
+                                log.info("inside user department creation for other department || inactive users - {}", inactiveGrievanceUsers);
+                                if((activeGrievanceUsers == null || (activeGrievanceUsers != null && activeGrievanceUsers.size() == 0))
                                         && inactiveGrievanceUsers != null && inactiveGrievanceUsers.size() > 0) {
                                     log.info("inside user department creation for other department, setting department");
                                     newUser.setUserDepartment(inactiveGrievanceUsers.get(0).getUserDepartment());
