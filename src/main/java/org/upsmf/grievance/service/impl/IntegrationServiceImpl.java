@@ -307,7 +307,13 @@ public class IntegrationServiceImpl implements IntegrationService {
                     .findByCouncilNameAndCouncilName("OTHER", "OTHER");
 
             if (userDepartmentOptional.isPresent()) {
-                return userRepository.findByUserDepartment(userDepartmentOptional.get());
+                Optional<User> byUserDepartment = userRepository.findByUserDepartment(userDepartmentOptional.get());
+                if(byUserDepartment.isPresent()){
+                    User user = byUserDepartment.get();
+                    if(user != null && user.getStatus() == 1){
+                        return byUserDepartment;
+                    }
+                }
             }
         }
         return Optional.empty();
