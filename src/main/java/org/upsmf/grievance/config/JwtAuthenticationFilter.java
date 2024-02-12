@@ -3,12 +3,7 @@ package org.upsmf.grievance.config;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SigningKeyResolver;
-import io.jsonwebtoken.SigningKeyResolverAdapter;
-import io.jsonwebtoken.impl.DefaultClaims;
-import io.jsonwebtoken.impl.DefaultJwsHeader;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,16 +19,12 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.security.Key;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	@Value("${urls.whitelist}")
@@ -68,6 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		} else {
 			whiteListed = Boolean.FALSE;
 			String header = req.getHeader(HEADER_AUTHENTICATION);
+			log.info("Auth header - {}", header);
 			if (StringUtils.isBlank(header)) {
 				res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 				res.getWriter()
@@ -80,10 +72,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 				authToken = header.replace(TOKEN_PREFIX, "");
 				username = getUserName(authToken);
 			} else {
-				logger.warn("couldn't find bearer string, will ignore the header");
+				log.error("couldn't find bearer string, will ignore the header");
 			}
 			// check token in REDIS
 			String persistedToken = redisTemplate.opsForValue().get(username);
+			log.info("Auth header found in REDIS  - {}", persistedToken);
 			if(persistedToken == null || persistedToken.isEmpty()
 					|| !persistedToken.equals(authToken)) {
 				res.setStatus(HttpServletResponse.SC_FORBIDDEN);
@@ -93,9 +86,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 				res.getWriter().flush();
 				return;
 			}
-			if (persistedToken.equals(authToken)) {
-				authorized = Boolean.TRUE;
-			}
+			// setting true
+			authorized = Boolean.TRUE;
+
 		}
 
 		if (!authorized && !whiteListed) {
